@@ -1,0 +1,48 @@
+{
+  "conversation_info": {
+    "sessionId": "sess_001_account_access",
+    "categories": [
+      {
+        "display_name": "Account Access Support"
+      }
+    ]
+  },
+  "entries": [
+    {
+      "start_timestamp_usec": 1000000,
+      "text": "Hello, I'm having trouble logging into my account. My name is Alice Smith.",
+      "role": "CUSTOMER",
+      "user_id": 1
+    },
+    {
+      "start_timestamp_usec": 5000000,
+      "text": "I can help with that, Alice. Can you confirm the email address associated with your account and a contact phone number?",
+      "role": "AGENT",
+      "user_id": 2
+    },
+    {
+      "start_timestamp_usec": 10000000,
+      "text": "Yes, my email is alice.smith@example.com and my phone number is +1-202-555-0100.",
+      "role": "CUSTOMER",
+      "user_id": 1
+    },
+    {
+      "start_timestamp_usec": 15000000,
+      "text": "Thank you, Alice. I'm looking up your account now. Please bear with me for a moment.",
+      "role": "AGENT",
+      "user_id": 2
+    },
+    {
+      "start_timestamp_usec": 20000000,
+      "text": "Okay, I see an account under that email. It seems there was a temporary lock. I've reset your password and sent a new one to your email. Please check your inbox.",
+      "role": "AGENT",
+      "user_id": 2
+    },
+    {
+      "start_timestamp_usec": 25000000,
+      "text": "Got it! I've received the email and successfully logged in. Thank you so much for your quick assistance!",
+      "role": "CUSTOMER",
+      "user_id": 1
+    }
+  ]
+}

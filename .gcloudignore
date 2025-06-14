@@ -1,0 +1,14 @@
+# Exclude files not needed for the subscriber.py Cloud Function
+# main.py
+# Dockerfile
+
+# Standard Python ignores
+*.pyc
+__pycache__/
+
+# Version control
+.git
+.gitignore
+
+# Exclude this file itself
+.gcloudignore

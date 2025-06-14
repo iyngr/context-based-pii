@@ -1,0 +1,20 @@
+```mermaid
+graph TD
+    A[Customer Interaction] --> B(Application/Service)
+    B --> C{Redis Cache<br>TTL: 90s}
+    B --> D(Pub/Sub Topic: Raw Turns)
+
+    D --> E[Subscriber Service<br>(main.py Cloud Function)]
+    E --> F(Context Manager Service<br>Cloud Run Function)
+    E --> G(Pub/Sub Topic: Redacted Turns)
+
+    F -- (Manages Context & State) --> H(Durable Conversation Store<br>e.g., Cloud Spanner/Firestore)
+    G --> H
+    H -- (Completed Conversation Trigger) --> I(CCAI Ingestion Service<br>New Cloud Function/Run)
+    I --> J[Google CCAI Conversation Insights API]
+
+    C -- (Temporary Context) --> B
+    H -- (Full Transcripts) --> I
+    J -- (Transcripts, Summaries, Topics) --> K[CCAI Analytics & Reporting]
+
+```

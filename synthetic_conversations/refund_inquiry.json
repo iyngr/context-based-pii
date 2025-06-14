@@ -1,0 +1,54 @@
+{
+  "conversation_info": {
+    "sessionId": "sess_004_refund_inquiry",
+    "categories": [
+      {
+        "display_name": "Billing and Refunds"
+      }
+    ]
+  },
+  "entries": [
+    {
+      "start_timestamp_usec": 1000000,
+      "text": "Hello, I'm calling about a refund for order 556677889. My name is David Brown.",
+      "role": "CUSTOMER",
+      "user_id": 1
+    },
+    {
+      "start_timestamp_usec": 5000000,
+      "text": "Hi David. I can look into that for you. Could you please provide your account number or the IBAN code for the refund?",
+      "role": "AGENT",
+      "user_id": 2
+    },
+    {
+      "start_timestamp_usec": 10000000,
+      "text": "My account number is 1234567890, and the IBAN is DE89370400440532013000. The SWIFT code is COBADEFFXXX.",
+      "role": "CUSTOMER",
+      "user_id": 1
+    },
+    {
+      "start_timestamp_usec": 15000000,
+      "text": "Thank you for that information. I'm verifying the refund status now.",
+      "role": "AGENT",
+      "user_id": 2
+    },
+    {
+      "start_timestamp_usec": 20000000,
+      "text": "It looks like your refund was processed on May 28, 2025. It should appear in your account within 1-2 business days.",
+      "role": "AGENT",
+      "user_id": 2
+    },
+    {
+      "start_timestamp_usec": 25000000,
+      "text": "Great, thank you for the update! I was getting worried. So, it's definitely on its way?",
+      "role": "CUSTOMER",
+      "user_id": 1
+    },
+    {
+      "start_timestamp_usec": 30000000,
+      "text": "Yes, it's confirmed. You should see it very soon. Is there anything else I can assist you with today?",
+      "role": "AGENT",
+      "user_id": 2
+    }
+  ]
+}

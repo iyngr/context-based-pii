@@ -1,0 +1,54 @@
+{
+  "conversation_info": {
+    "sessionId": "sess_003_shipping_update",
+    "categories": [
+      {
+        "display_name": "Shipping and Delivery"
+      }
+    ]
+  },
+  "entries": [
+    {
+      "start_timestamp_usec": 1000000,
+      "text": "Hi, I need to update the shipping address for my order. My name is Emily White.",
+      "role": "CUSTOMER",
+      "user_id": 1
+    },
+    {
+      "start_timestamp_usec": 5000000,
+      "text": "Hello Emily. What is the order number you'd like to update, and what is the new street address?",
+      "role": "AGENT",
+      "user_id": 2
+    },
+    {
+      "start_timestamp_usec": 10000000,
+      "text": "The order number is 112233445. The new address is 123 Main Street, Anytown, CA 90210.",
+      "role": "CUSTOMER",
+      "user_id": 1
+    },
+    {
+      "start_timestamp_usec": 15000000,
+      "text": "Thank you. Just to confirm, is that 123 Main Street, Anytown, California, zip code 90210?",
+      "role": "AGENT",
+      "user_id": 2
+    },
+    {
+      "start_timestamp_usec": 20000000,
+      "text": "That's correct. Also, my social security number is 999-88-7777, just in case you need it for verification.",
+      "role": "CUSTOMER",
+      "user_id": 1
+    },
+    {
+      "start_timestamp_usec": 25000000,
+      "text": "Thank you for the address confirmation. We don't require your SSN for this update. I've successfully updated the shipping address for order 112233445.",
+      "role": "AGENT",
+      "user_id": 2
+    },
+    {
+      "start_timestamp_usec": 30000000,
+      "text": "Perfect! Thank you so much for your help. I appreciate it.",
+      "role": "CUSTOMER",
+      "user_id": 1
+    }
+  ]
+}

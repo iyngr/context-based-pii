@@ -1,0 +1,18 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+# Ignore Python cache files
+__pycache__/
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+# Ignore Python bytecode files
+*.pyc
+# Ignore virtual environment directories
+.venv/
+# Ignore log files
+*.log
+.idea/
+# Ignore coverage reports
+.coverage
+# Ignore test output files
+test_output/

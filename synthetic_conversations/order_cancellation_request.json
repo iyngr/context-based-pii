@@ -1,0 +1,54 @@
+{
+  "conversation_info": {
+    "sessionId": "sess_002_order_cancel",
+    "categories": [
+      {
+        "display_name": "Order Management"
+      }
+    ]
+  },
+  "entries": [
+    {
+      "start_timestamp_usec": 1000000,
+      "text": "Hi, I'd like to cancel my recent order, number 987654321. My name is Robert Johnson.",
+      "role": "CUSTOMER",
+      "user_id": 1
+    },
+    {
+      "start_timestamp_usec": 5000000,
+      "text": "Certainly, Robert. To verify your identity, could you please provide your date of birth and the last four digits of the credit card used for this purchase?",
+      "role": "AGENT",
+      "user_id": 2
+    },
+    {
+      "start_timestamp_usec": 10000000,
+      "text": "My date of birth is 01/15/1985, and the card ends in 1234. The full card number is 4111-2222-3333-4444.",
+      "role": "CUSTOMER",
+      "user_id": 1
+    },
+    {
+      "start_timestamp_usec": 15000000,
+      "text": "Thank you for that information. I'm processing the cancellation now. It might take a few minutes.",
+      "role": "AGENT",
+      "user_id": 2
+    },
+    {
+      "start_timestamp_usec": 20000000,
+      "text": "Your order 987654321 has been successfully cancelled. You should receive a confirmation email shortly.",
+      "role": "AGENT",
+      "user_id": 2
+    },
+    {
+      "start_timestamp_usec": 25000000,
+      "text": "Excellent! Thank you for your help. Is there anything else I need to do?",
+      "role": "CUSTOMER",
+      "user_id": 1
+    },
+    {
+      "start_timestamp_usec": 30000000,
+      "text": "No, that's all. The refund will be processed within 3-5 business days. Have a great day!",
+      "role": "AGENT",
+      "user_id": 2
+    }
+  ]
+}
