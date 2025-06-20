@@ -1,0 +1,126 @@
+dlp_templates: 
+  inspect_template_name: "projects/${PROJECT_ID}/locations/us-central1/inspectTemplates/identify"
+  deidentify_template_name: "projects/${PROJECT_ID}/locations/us-central1/deidentifyTemplates/deidentify"
+context_keywords:
+  US_SOCIAL_SECURITY_NUMBER:
+  - social security
+  - ssn
+  CREDIT_CARD_NUMBER:
+  - credit card
+  - card number
+  PHONE_NUMBER:
+  - phone number
+  - your number
+  - contact number
+  EMAIL_ADDRESS:
+  - email address
+  - your email
+  DATE_OF_BIRTH:
+  - date of birth
+  - dob
+  STREET_ADDRESS:
+  - address
+  - street
+  - home address
+  - mailing address
+  - boulevard
+  - avenue
+  - road
+  - drive
+  - lane
+  - way
+  - live
+  FINANCIAL_ACCOUNT_NUMBER:
+  - account number
+  - member id
+  PERSON_NAME:
+  - full name
+  - your name
+  US_PASSPORT:
+  - passport number
+  - passport no
+  CVV_NUMBER:
+  - cvv
+  - card verification value
+  IMEI_HARDWARE_ID:
+  - imei
+  - hardware id
+  US_DRIVERS_LICENSE_NUMBER:
+  - driver's license
+  - drivers license number
+  US_EMPLOYER_IDENTIFICATION_NUMBER:
+  - employer identification number
+  - ein
+  US_MEDICARE_BENEFICIARY_ID_NUMBER:
+  - medicare beneficiary id
+  - mbi
+  DOD_ID_NUMBER:
+  - dod id
+  - department of defense id
+  - military id
+  - dod number
+  MAC_ADDRESS:
+  - mac address
+  - physical address
+  IP_ADDRESS:
+  - ip address
+  - internet protocol address
+  SWIFT_CODE:
+  - swift code
+  - bic code
+  IBAN_CODE:
+  - iban
+  - international bank account number
+  SOCIAL_HANDLE:
+  - social handle
+  - username
+  - profile name
+  - account name
+  - tag
+  - handle
+  ALIEN_REGISTRATION_NUMBER:
+  - alien registration number
+  - a number
+  - alien number
+  BORDER_CROSSING_CARD:
+  - border crossing card
+  - bcc
+  - laser visa
+inspect_config:
+  info_types:
+  - name: EMAIL_ADDRESS
+  - name: PHONE_NUMBER
+  - name: CREDIT_CARD_NUMBER
+  - name: US_PASSPORT
+  - name: PERSON_NAME
+  - name: STREET_ADDRESS
+  - name: US_SOCIAL_SECURITY_NUMBER
+  - name: FINANCIAL_ACCOUNT_NUMBER
+  - name: CVV_NUMBER
+  - name: IMEI_HARDWARE_ID
+  - name: US_DRIVERS_LICENSE_NUMBER
+  - name: US_EMPLOYER_IDENTIFICATION_NUMBER
+  - name: US_MEDICARE_BENEFICIARY_ID_NUMBER
+  - name: DOD_ID_NUMBER
+  - name: MAC_ADDRESS
+  - name: IP_ADDRESS
+  - name: SWIFT_CODE
+  - name: IBAN_CODE
+  custom_info_types:
+  - info_type:
+      name: ALIEN_REGISTRATION_NUMBER
+    regex:
+      pattern: \b[Aa]\d{7,9}\b
+  - info_type:
+      name: SOCIAL_HANDLE
+    regex:
+      pattern: "@[a-zA-Z][a-zA-Z0-9_.-]{1,14}\\b"
+  - info_type:
+      name: BORDER_CROSSING_CARD
+    regex:
+      pattern: "\\b[a-zA-Z]\\d{7}\\b"
+deidentify_config:
+  info_type_transformations:
+    transformations:
+    - primitive_transformation:
+        replace_with_info_type_config: {}

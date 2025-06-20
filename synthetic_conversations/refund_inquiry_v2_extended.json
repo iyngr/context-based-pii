@@ -1,0 +1,159 @@
+{
+    "conversation_info": {
+        "conversation_id": "sess_004_refund_inquiry_v2_extended",
+        "categories": [
+            {
+                "display_name": "Billing and Refunds"
+            }
+        ]
+    },
+    "entries": [
+        {
+            "start_timestamp_usec": 1760000000000000,
+            "text": "Hello, I'm calling about a refund for order 556677889. Could you please provide the IBAN for the refund?",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 0
+        },
+        {
+            "start_timestamp_usec": 1760000005000000,
+            "text": "FR7630006000011234567890189",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 1
+        },
+        {
+            "start_timestamp_usec": 1760000010000000,
+            "text": "Thank you. And could you also provide the SWIFT code associated with that account?",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 2
+        },
+        {
+            "start_timestamp_usec": 1760000015000000,
+            "text": "CHASUS33",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 3
+        },
+        {
+            "start_timestamp_usec": 1760000020000000,
+            "text": "Thank you for that information. I'm verifying the refund status now.",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 4
+        },
+        {
+            "start_timestamp_usec": 1760000025000000,
+            "text": "It looks like your refund was processed on May 28, 2025. It should appear in your account within 1-2 business days.",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 5
+        },
+        {
+            "start_timestamp_usec": 1760000030000000,
+            "text": "Great, thank you for the update! I was getting worried. So, it's definitely on its way?",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 6
+        },
+        {
+            "start_timestamp_usec": 1760000035000000,
+            "text": "Yes, it's confirmed. You should see it very soon. Is there anything else I can assist you with today?",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 7
+        },
+        {
+            "start_timestamp_usec": 1760000040000000,
+            "text": "To ensure the refund is correctly routed, could you confirm the full name of the account holder?",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 8
+        },
+        {
+            "start_timestamp_usec": 1760000045000000,
+            "text": "It's Sarah Johnson.",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 9
+        },
+        {
+            "start_timestamp_usec": 1760000050000000,
+            "text": "Thank you, Sarah. And for security, could you provide your US Passport number?",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 10
+        },
+        {
+            "start_timestamp_usec": 1760000055000000,
+            "text": "My passport number is 123456789.",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 11
+        },
+        {
+            "start_timestamp_usec": 1760000060000000,
+            "text": "Understood. We're also updating our customer records. Could you provide your US Driver's License number?",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 12
+        },
+        {
+            "start_timestamp_usec": 1760000065000000,
+            "text": "It's D1234567.",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 13
+        },
+        {
+            "start_timestamp_usec": 1760000070000000,
+            "text": "Thank you. And for our internal fraud prevention, could you provide your IMEI hardware ID for the device used to make the purchase?",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 14
+        },
+        {
+            "start_timestamp_usec": 1760000075000000,
+            "text": "My IMEI is 357870000000000.",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 15
+        },
+        {
+            "start_timestamp_usec": 1760000080000000,
+            "text": "Got it. We've noted that. Also, for network diagnostics, could you provide the MAC address of your primary device?",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 16
+        },
+        {
+            "start_timestamp_usec": 1760000085000000,
+            "text": "It's 00:1A:2B:3C:4D:5E.",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 17
+        },
+        {
+            "start_timestamp_usec": 1760000090000000,
+            "text": "Thank you. And finally, for security purposes, could you provide the IP address you are currently connecting from?",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 18
+        },
+        {
+            "start_timestamp_usec": 1760000095000000,
+            "text": "My IP address is 192.168.1.100.",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 19
+        },
+        {
+            "start_timestamp_usec": 1760000100000000,
+            "text": "Excellent. All the necessary details have been updated. Is there anything else?",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 20
+        }
+    ]
+}

@@ -1,0 +1,12 @@
+sequenceDiagram
+    participant Client as subscriber_service
+    participant Service as main_service
+    participant GoogleDLP as Google Cloud DLP API
+
+    Client->>+Service: POST /handle-customer-utterance <br> (with transcript)
+    Service->>Service: call_dlp_for_redaction(transcript)
+    Service->>Service: Load dlp_config.json
+    Service->>Service: Build inspect_config & deidentify_config
+    Service->>+GoogleDLP: deidentify_content(transcript, config)
+    GoogleDLP-->>-Service: Return redacted_transcript
+    Service-->>-Client: Return {"redacted_transcript": ...}

@@ -1,0 +1,40 @@
+# cloudbuild.yaml (at the root of your monorepo)
+steps:
+# Build and Deploy main_service
+- id: 'Build main_service image'
+  name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', 'gcr.io/$PROJECT_ID/main-service-image', '.']
+  dir: 'main_service' # Context for Docker build
+- id: 'Push main_service image'
+  name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'gcr.io/$PROJECT_ID/main-service-image']
+- id: 'Deploy main_service to Cloud Run'
+  name: 'gcr.io/cloud-builders/gcloud'
+  args: ['run', 'deploy', 'main-service', '--image', 'gcr.io/$PROJECT_ID/main-service-image', '--region', 'us-central1', '--platform', 'managed', '--allow-unauthenticated']
+  # Add other necessary arguments like --set-env-vars, --vpc-connector, etc.
+
+# Update DLP Templates
+- id: 'Install Python dependencies for DLP script'
+  name: 'python'
+  entrypoint: 'pip'
+  args: ['install', 'PyYAML', 'google-cloud-dlp']
+  dir: 'deployment'
+- id: 'Run DLP template update script'
+  name: 'python'
+  entrypoint: 'python3'
+  args: ['update_dlp_templates.py']
+  dir: 'deployment'
+  env: ['PROJECT_ID=$PROJECT_ID']
+
+# Build and Deploy subscriber_service
+- id: 'Build subscriber_service image'
+  name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', 'gcr.io/$PROJECT_ID/subscriber-service-image', '.']
+  dir: 'subscriber_service' # Context for Docker build
+- id: 'Push subscriber_service image'
+  name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'gcr.io/$PROJECT_ID/subscriber-service-image']
+- id: 'Deploy subscriber_service to Cloud Run'
+  name: 'gcr.io/cloud-builders/gcloud'
+  args: ['run', 'deploy', 'subscriber-service', '--image', 'gcr.io/$PROJECT_ID/subscriber-service-image', '--region', 'us-central1', '--platform', 'managed', '--no-allow-unauthenticated']
+ # Add other necessary arguments like --set-env-vars, --vpc-connector, etc.

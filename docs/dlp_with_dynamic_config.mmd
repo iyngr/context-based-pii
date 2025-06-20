@@ -1,0 +1,12 @@
+sequenceDiagram
+    participant Service as main_service
+    participant GoogleDLP as Google Cloud DLP API
+    participant GCPTemplates as GCP Stored Templates
+
+    Service->>GCPTemplates: Retrieve InspectTemplate (by name)
+    GCPTemplates-->>Service: Base Inspect Config
+    Service->>Service: Get expected_pii_type from Redis context
+    Service->>Service: Create Dynamic Overrides/Additions (e.g., boost likelihood for expected PII)
+    Service->>+GoogleDLP: deidentify_content(transcript, <br> inspect_template_name, <br> inspect_config_overrides)
+    GoogleDLP->>GoogleDLP: Combine Base Template Config + Overrides
+    GoogleDLP-->>-Service: Return redacted_transcript

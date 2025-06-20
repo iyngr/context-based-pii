@@ -1,0 +1,13 @@
+# cloudbuild-dlp-update.yaml
+steps:
+- id: 'Install Python dependencies for DLP script'
+  name: 'python'
+  entrypoint: 'pip'
+  args: ['install', 'PyYAML', 'google-cloud-dlp']
+  dir: 'deployment'
+- id: 'Run DLP template update script'
+  name: 'python'
+  entrypoint: 'python3'
+  args: ['update_dlp_templates.py']
+  dir: 'deployment'
+  env: ['PROJECT_ID=$PROJECT_ID']

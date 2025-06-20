@@ -1,0 +1,6 @@
+Flask
+redis
+google-cloud-dlp
+gunicorn
+google-cloud-secret-manager
+PyYAML
