@@ -231,3 +231,9 @@ The problem was multi-faceted:
 **Rationale:** The DLP API returned an error "Inspection rule set should have `info_types` specified," indicating that the `rule_set` must explicitly list the `info_types` it applies to. The previous attempt to apply the rule broadly by omitting `info_types` was incorrect. This change ensures the likelihood-boosting rule is correctly applied to the `expected_pii_type` while satisfying the API's requirement.
 **Implementation Details:**
     *   Modified `main_service/main.py` at lines 344-347 to include `info_types: [{"name": expected_type}]` within the `rule_set` definition in `final_inline_inspect_config`. This ensures the dynamic likelihood-boosting rule is correctly scoped to the `expected_pii_type`.
+[2025-06-22 20:28:34] - **Decision:** Implemented conditional application of DLP inspection `rule_set` in `main_service/main.py` to correctly handle built-in and custom info types.
+**Rationale:** The recurring "Invalid built-in info type name" error for custom info types like `SOCIAL_HANDLE` indicated that the `rule_set`'s `info_types` field is incompatible with custom info types, even though the DLP API requires `info_types` to be specified in a `rule_set`. This change ensures that the likelihood-boosting rule is applied only to built-in info types, while custom info types rely solely on their `custom_info_types` definition for detection, thus avoiding the error.
+**Implementation Details:**
+    *   Modified `main_service/main.py` at lines 319-349 to:
+        *   Add the `expected_pii_type` to `final_inline_inspect_config["custom_info_types"]` if it's a custom type, and skip adding a `rule_set` for it.
+        *   Add the `expected_pii_type` to `final_inline_inspect_config["info_types"]` if it's a built-in type, and then add a `rule_set` with `info_types: [{"name": expected_type}]` to boost its likelihood.

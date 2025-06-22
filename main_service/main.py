@@ -324,6 +324,9 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
             if expected_type not in existing_custom_types:
                 final_inline_inspect_config["custom_info_types"].append(custom_type_definition)
                 logger.info(f"Added custom info type '{expected_type}' to final_inline_inspect_config.")
+            # For custom info types, we do NOT add a rule_set with info_types, as it causes "Invalid built-in info type" error.
+            # The custom info type definition itself is sufficient for detection.
+            logger.info(f"Skipping rule_set for custom info type '{expected_type}' to avoid 'Invalid built-in info type' error.")
         else:
             # It's a built-in type. Add it to the info_types list if not already present.
             if "info_types" not in final_inline_inspect_config:
@@ -333,21 +336,21 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
                 final_inline_inspect_config["info_types"].append({"name": expected_type})
                 logger.info(f"Added built-in info type '{expected_type}' to final_inline_inspect_config.")
 
-        # Step 2: Create a rule to boost the likelihood of all findings.
-        rule = {
-            "hotword_rule": {
-                "hotword_regex": {"pattern": ".+"},
-                "proximity": {"window_before": 100, "window_after": 100},
-                "likelihood_adjustment": {"fixed_likelihood": dlp_v2.Likelihood.VERY_LIKELY}
+            # For built-in info types, create a rule to boost the likelihood.
+            rule = {
+                "hotword_rule": {
+                    "hotword_regex": {"pattern": ".+"},
+                    "proximity": {"window_before": 100, "window_after": 100},
+                    "likelihood_adjustment": {"fixed_likelihood": dlp_v2.Likelihood.VERY_LIKELY}
+                }
             }
-        }
-        if "rule_set" not in final_inline_inspect_config:
-            final_inline_inspect_config["rule_set"] = []
-        final_inline_inspect_config["rule_set"].append({
-            "info_types": [{"name": expected_type}], # Specify the info_type for the rule set
-            "rules": [rule]
-        })
-        logger.info(f"DLP inspection configured to boost likelihood for '{expected_type}' using a dynamic rule set.")
+            if "rule_set" not in final_inline_inspect_config:
+                final_inline_inspect_config["rule_set"] = []
+            final_inline_inspect_config["rule_set"].append({
+                "info_types": [{"name": expected_type}], # Specify the info_type for the rule set
+                "rules": [rule]
+            })
+            logger.info(f"DLP inspection configured to boost likelihood for built-in type '{expected_type}' using a dynamic rule set.")
 
     # Define the default deidentify_config for fallback
     default_deidentify_config = DLP_CONFIG.get("deidentify_config", {
