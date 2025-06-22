@@ -161,14 +161,13 @@ except Exception as e:
 # stays warm between requests.
 dlp_client = None
 try:
-    dlp_location = DLP_CONFIG.get("dlp_location")
-    if dlp_location:
-        logger.info(f"DLP location specified: {dlp_location}. Initializing regional client.")
-        client_options = {"api_endpoint": f"{dlp_location}-dlp.googleapis.com"}
-        dlp_client = dlp_v2.DlpServiceClient(client_options=client_options)
-    else:
-        logger.info("No DLP location specified. Initializing global DLP client.")
-        dlp_client = dlp_v2.DlpServiceClient()
+    # Default to the primary region 'us-central1' if not specified in the config.
+    # Using a regional endpoint is critical when egressing through a VPC.
+    dlp_location = DLP_CONFIG.get("dlp_location", "us-central1")
+    endpoint = f"{dlp_location}-dlp.googleapis.com"
+    logger.info(f"Initializing regional DLP client for location '{dlp_location}' at endpoint '{endpoint}'.")
+    client_options = {"api_endpoint": endpoint}
+    dlp_client = dlp_v2.DlpServiceClient(client_options=client_options)
     logger.info("Successfully initialized DLP client.")
 except Exception as e:
     logger.error(f"Could not initialize DLP client. Error: {str(e)}")
