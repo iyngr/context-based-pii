@@ -31,3 +31,4 @@
 [2025-06-15 20:23:33] - Successfully deployed `transcript_aggregator_service` to Google Cloud Run.
 [2025-06-18 08:53:40] - Resolved `400 InvalidArgument` error in `transcript_aggregator_service` by explicitly setting the CCAI client endpoint.
 [2025-06-18 09:24:35] - Applied a definitive fix to `transcript_aggregator_service` to resolve both the `Location Mismatch` and `409 AlreadyExists` errors.
+2025-06-22 14:13:20 - Successfully configured CI/CD pipeline with Artifact Registry, service-specific Cloud Build files and triggers, and GitHub integration. Resolved previous permission issues for image push and Cloud Run deployment.

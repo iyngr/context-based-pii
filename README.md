@@ -56,7 +56,74 @@ The system consists of two main components:
 *   Calls the Google Cloud Conversation Insights API to ingest the aggregated and redacted transcript for analytics.
 *   Includes robust logging and error handling.
 
-## 4. Google Cloud Resources Used (Production Configuration)
+## 4. Continuous Integration/Continuous Deployment (CI/CD) Setup
+
+This project utilizes Google Cloud Build for its CI/CD pipeline, enabling automated builds and deployments upon code changes.
+
+### Key Aspects of the CI/CD Setup:
+
+*   **Artifact Registry Repository:** A new Artifact Registry repository named `ccai-services` has been created in `us-central1` to store all Docker images for the project's services.
+    *   **Repository Name:** `ccai-services`
+    *   **Location:** `us-central1`
+    *   **Format:** Docker
+
+*   **Service-Specific Cloud Build Configurations:** Each service (`main_service`, `subscriber_service`, `transcript_aggregator_service`) has its own dedicated `cloudbuild.yaml` file located within its respective service directory. This allows for independent build and deployment processes for each service.
+    *   **Example (`main_service/cloudbuild.yaml`):**
+        ```yaml
+        steps:
+        - id: 'Build context-manager image'
+          name: 'gcr.io/cloud-builders/docker'
+          args: ['build', '-t', '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/context-manager-image:${SHORT_SHA}', '.']
+          dir: 'main_service'
+
+        - id: 'Push context-manager image'
+          name: 'gcr.io/cloud-builders/docker'
+          args: ['push', '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/context-manager-image:${SHORT_SHA}']
+
+        - id: 'Deploy context-manager to Cloud Run'
+          name: 'gcr.io/cloud-builders/gcloud'
+          args:
+            - 'run'
+            - 'deploy'
+            - 'context-manager'
+            - '--image'
+            - '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/context-manager-image:${SHORT_SHA}'
+            - '--region'
+            - 'us-central1'
+            - '--platform'
+            - 'managed'
+            - '--allow-unauthenticated'
+            - '--service-account'
+            - '${_MAIN_SERVICE_SA}'
+            - '--vpc-connector'
+            - '${_VPC_CONNECTOR}'
+            - '--vpc-egress'
+            - 'all'
+            - '--set-env-vars'
+            - 'GOOGLE_CLOUD_PROJECT=${PROJECT_ID},CONTEXT_TTL_SECONDS=90'
+            - '--min-instances=0'
+            - '--max-instances=1'
+
+        substitutions:
+          _GAR_LOCATION: 'us-central1'
+          _GAR_REPOSITORY: 'ccai-services'
+          _MAIN_SERVICE_SA: 'context-manager-sa@${PROJECT_ID}.iam.gserviceaccount.com'
+          _VPC_CONNECTOR: 'redis-connector'
+
+        options:
+          logging: CLOUD_LOGGING_ONLY
+        ```
+
+*   **Cloud Build Triggers:** Three separate Cloud Build triggers have been configured, one for each service. These triggers are set up to:
+    *   Monitor changes in specific service folders (e.g., `main_service/`).
+    *   Use "Included files filter" in advanced settings to ensure that a build is only initiated when files within that specific folder are modified.
+    *   Each trigger is connected to a specific service account that has the necessary permissions for building and deploying its respective service, including `Service Account User` permissions on itself for impersonation during deployment.
+
+*   **GitHub Integration:** A Developer Connect GitHub account in GCP has been connected to the personal GitHub repository where this project is hosted. This integration ensures that any commit made to the `master` branch will automatically trigger the relevant Cloud Build based on the folder configuration.
+
+This setup establishes a robust CI/CD pipeline for automatic builds and deployments of each service.
+
+## 5. Google Cloud Resources Used (Production Configuration)
 
 *   **Project ID:** `YOUR_GCP_PROJECT_ID`
 *   **Region:** `us-central1` (for Cloud Run, Cloud Function, Memorystore, VPC Connector)

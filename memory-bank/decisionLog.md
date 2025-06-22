@@ -138,3 +138,11 @@ The problem was multi-faceted:
 **Rationale:** The user confirmed that the DLP templates already exist. The `NotFound` error from the DLP API when called by `main_service` indicates that the service account running `main_service` does not have the necessary permissions to access or use these templates.
 **Implementation Details:**
     *   The service account associated with the `main_service` Cloud Run instance needs to be granted `roles/dlp.user` or more granular permissions like `dlp.inspectTemplates.get`, `dlp.deidentifyTemplates.get`, and `dlp.content.deidentify`.
+2025-06-22 14:13:38 - **Decision:** Implemented a comprehensive CI/CD pipeline using Google Cloud Build.
+**Rationale:** To automate the build and deployment process for each service, ensuring faster iterations and reliable deployments. This includes setting up a new Artifact Registry, service-specific Cloud Build configurations, and triggers integrated with GitHub.
+**Implementation Details:**
+    *   Created `ccai-services` Artifact Registry repository in `us-central1`.
+    *   Developed separate `cloudbuild.yaml` files for `main_service`, `subscriber_service`, and `transcript_aggregator_service`.
+    *   Configured three Cloud Build triggers, each monitoring a specific service folder and using "Included files filter" for precise triggering.
+    *   Connected Developer Connect GitHub to the project's GitHub repository to enable automatic triggers on `master` branch commits.
+    *   Ensured each trigger is associated with a dedicated service account possessing the necessary `Artifact Registry Writer` and `Service Account User` (on itself) permissions to handle image pushes and Cloud Run deployments.

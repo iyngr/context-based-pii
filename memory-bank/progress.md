@@ -53,3 +53,4 @@ This file tracks the project's progress using a task list format.
     ```bash
     cd subscriber_service && gcloud run deploy subscriber-service --source . --region us-central1 --project PROJECT_ID --allow-unauthenticated --set-env-vars GCP_PROJECT_ID_FOR_SECRETS=PROJECT_ID --min-instances=0 --max-instances=1
     ```
+2025-06-22 14:13:30 - Completed CI/CD setup: Created Artifact Registry repo, implemented service-specific Cloud Build files and triggers, connected GitHub, and configured service account permissions. Resolved build and deployment permission errors.
