@@ -373,7 +373,7 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
         
         request = {
             "parent": parent,
-            "item": item,
+            "item": {"value": transcript},
         }
 
         # Configure inspection: Prioritize dynamic config, then template, then base inline config.
@@ -408,7 +408,7 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
         try:
             fallback_request = {
                 "parent": parent,
-                "item": item,
+                "item": {"value": transcript}, # Redefine item here for safety
                 "inspect_config": final_inline_inspect_config, # Always use the prepared inline config for fallback
                 "deidentify_config": default_deidentify_config # Always use the prepared inline config for fallback
             }
