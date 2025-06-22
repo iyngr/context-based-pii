@@ -7,7 +7,7 @@ import time
 import yaml
 from google.cloud import dlp_v2
 from google.cloud.secretmanager import SecretManagerServiceClient
-from google.api_core.exceptions import NotFound, PermissionDenied
+from google.api_core.exceptions import NotFound, PermissionDenied, GoogleAPICallError
 
 # --- Google Cloud Secret Manager Helper ---
 GCP_PROJECT_ID_FOR_SECRETS = os.getenv("GOOGLE_CLOUD_PROJECT")
@@ -391,7 +391,7 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
     })
 
     try:
-        logger.info(f"Sending request to DLP API for project_id: {current_gcp_project_id}, transcript_preview: {transcript[:100]}")
+        logger.info(f"Sending request to DLP API for parent: {parent}, inspect_template: {inspect_template_name}, deidentify_template: {deidentify_template_name}, transcript_preview: {transcript[:100]}")
         
         request = {
             "parent": parent,
@@ -448,6 +448,14 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
     except PermissionDenied as e:
         logger.error(f"DLP API Error: Permission denied for project '{current_gcp_project_id}'. Ensure the service account has 'DLP User' role. Error: {str(e)}")
         return f"[DLP_PERMISSION_DENIED_ERROR] {transcript}"
+
+    except GoogleAPICallError as e:
+        if e.code == 404:
+            logger.error(f"DLP API Error (404 Not Found): The specified DLP inspect or de-identify templates were not found, or the project ID/location is incorrect. Please verify that templates '{inspect_template_name}' and '{deidentify_template_name}' exist in project '{current_gcp_project_id}' in region '{dlp_location}' and that the service account has 'DLP User' role. Error: {str(e)}")
+            return f"[DLP_TEMPLATE_NOT_FOUND_ERROR] {transcript}"
+        else:
+            logger.error(f"A generic Google API Call Error occurred during DLP call: Status Code: {e.code()}, Message: {e.message}. This can be caused by permission issues, invalid arguments, or network problems. Please check service account permissions and DLP template paths for project '{current_gcp_project_id}'.")
+            return f"[DLP_API_CALL_ERROR] {transcript}"
 
     except Exception as e:
         logger.error(f"An unexpected error occurred during DLP API call: {str(e)}")
