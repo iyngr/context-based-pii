@@ -26,6 +26,8 @@ This file tracks the project's progress using a task list format.
 *   Update `decisionLog.md` with the architectural decision for post-call redaction.
 *   Update `activeContext.md` with current focus and open questions.
 *   Verify DLP template existence and permissions in GCP (if the error persists).
+*   Instructing user to verify and grant necessary IAM permissions for the `main_service` service account to access DLP templates.
+*   Investigating DLP template access permissions for the `main_service` Cloud Run service account.
 
 ## Next Steps
 

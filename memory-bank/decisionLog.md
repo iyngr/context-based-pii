@@ -134,3 +134,7 @@ The problem was multi-faceted:
 **Implementation Details:**
    *   Updated `logger.info` message at line 339 to use `current_gcp_project_id` instead of `project_id`.
    *   Updated the `NotFound` exception log message at line 407 to use `current_gcp_project_id` instead of `project_id`.
+[2025-06-20 08:03:00] - **Decision:** The `DLP API Error: Requested inspect/deidentify template not found` error is likely a permission issue, not a missing template issue.
+**Rationale:** The user confirmed that the DLP templates already exist. The `NotFound` error from the DLP API when called by `main_service` indicates that the service account running `main_service` does not have the necessary permissions to access or use these templates.
+**Implementation Details:**
+    *   The service account associated with the `main_service` Cloud Run instance needs to be granted `roles/dlp.user` or more granular permissions like `dlp.inspectTemplates.get`, `dlp.deidentifyTemplates.get`, and `dlp.content.deidentify`.
