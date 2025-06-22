@@ -2,6 +2,7 @@ steps:
 - id: 'Build subscriber-service image'
   name: 'gcr.io/cloud-builders/docker'
   args: ['build', '-t', '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/subscriber-service-image:${SHORT_SHA}', '.']
+  dir: 'subscriber_service'
 
 - id: 'Push subscriber-service image'
   name: 'gcr.io/cloud-builders/docker'

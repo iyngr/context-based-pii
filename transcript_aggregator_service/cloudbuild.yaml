@@ -2,6 +2,7 @@ steps:
 - id: 'Build transcript-aggregator image'
   name: 'gcr.io/cloud-builders/docker'
   args: ['build', '-t', '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/transcript-aggregator-image:${SHORT_SHA}', '.']
+  dir: 'transcript_aggregator_service'
 
 - id: 'Push transcript-aggregator image'
   name: 'gcr.io/cloud-builders/docker'
