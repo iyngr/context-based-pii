@@ -16,3 +16,4 @@ __pycache__/
 .coverage
 # Ignore test output files
 test_output/
+logs.txt

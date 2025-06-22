@@ -109,13 +109,13 @@ The problem was multi-faceted:
 [2025-06-18 08:53:25] - **Decision:** Resolved `400 InvalidArgument` error in `transcript_aggregator_service` by explicitly setting the client endpoint for the Contact Center Insights API.
 **Rationale:** The error `location must be set to the region's name when calling regional instance` indicated that the CCAI client was not using the correct regional endpoint, causing a mismatch when the service internally called the DLP API. The user confirmed that their resources are in `us-east1`.
 **Implementation Details:**
-    *   Modified `transcript_aggregator_service/main.py` to initialize the `contact_center_insights_v1.ContactCenterInsightsClient` with `client_options` that specify the regional API endpoint (e.g., `us-east1-contactcenterinsights.googleapis.com`).
-    *   Updated the default location to `us-east1`, while still allowing it to be overridden by the `CCAI_LOCATION` environment variable.
+    *   Modified `transcript_aggregator_service/main.py` to initialize the `contact_center_insights_v1.ContactCenterInsightsClient` with `client_options` that specify the regional API endpoint (e.g., `us-central1-contactcenterinsights.googleapis.com`).
+    *   Updated the default location to `us-central1`, while still allowing it to be overridden by the `CCAI_LOCATION` environment variable.
 [2025-06-18 09:24:21] - **Decision:** Implemented a definitive fix for the recurring `Location Mismatch` and `409 AlreadyExists` errors in `transcript_aggregator_service`.
 **Rationale:** The root cause of the location error was a conflicting client initialization that overwrote the correctly configured global client. The `AlreadyExists` error was caused by non-idempotent processing of re-delivered Pub/Sub messages.
 **Implementation Details:**
     *   Removed the conflicting local `ContactCenterInsightsClient` initialization from the `receive_conversation_ended_event` function.
-    *   Standardized on a single, correctly configured client initialization within the function, ensuring the `us-east1` endpoint is always used.
+    *   Standardized on a single, correctly configured client initialization within the function, ensuring the `us-central1` endpoint is always used.
     *   Wrapped the CCAI upload call in a `try...except AlreadyExists` block. If a conversation already exists, the error is logged as a warning, and the process continues to the Firestore cleanup step, ensuring idempotency.
 [2025-06-20 06:08:00] - **Decision:** Enhanced DLP template handling in `main_service` and improved error reporting for `NotFound` exceptions.
 **Rationale:** The `404 Requested inspect template not found` error indicated that the `main_service` was failing when DLP inspect/de-identify templates were not found or configured incorrectly. The previous rollback of DLP changes likely contributed to this. This change makes the service more resilient and provides clearer debugging information.
@@ -137,7 +137,24 @@ The problem was multi-faceted:
 [2025-06-20 08:03:00] - **Decision:** The `DLP API Error: Requested inspect/deidentify template not found` error is likely a permission issue, not a missing template issue.
 **Rationale:** The user confirmed that the DLP templates already exist. The `NotFound` error from the DLP API when called by `main_service` indicates that the service account running `main_service` does not have the necessary permissions to access or use these templates.
 **Implementation Details:**
-    *   The service account associated with the `main_service` Cloud Run instance needs to be granted `roles/dlp.user` or more granular permissions like `dlp.inspectTemplates.get`, `dlp.deidentifyTemplates.get`, and `dlp.content.deidentify`.
+    *   The service account associated with the `main_service` Cloud Run instance has the following roles:
+        *   `roles/artifactregistry.createOnPushWriter`
+        *   `roles/artifactregistry.writer`
+        *   `roles/cloudbuild.builds.editor`
+        *   `roles/developerconnect.readTokenAccessor`
+        *   `roles/dlp.admin`
+        *   `roles/dlp.deidentifyTemplatesEditor`
+        *   `roles/dlp.inspectTemplatesEditor`
+        *   `roles/dlp.reader`
+        *   `roles/dlp.user`
+        *   `roles/iam.serviceAccountUser`
+        *   `roles/logging.logWriter`
+        *   `roles/memorystore.admin`
+        *   `roles/redis.admin`
+        *   `roles/redis.dbConnectionUser`
+        *   `roles/run.admin`
+        *   `roles/secretmanager.secretAccessor`
+    *   Given these roles, the service account has more than sufficient permissions for DLP operations, including `dlp.user`, `dlp.admin`, and specific editor/reader roles for templates.
 2025-06-22 14:13:38 - **Decision:** Implemented a comprehensive CI/CD pipeline using Google Cloud Build.
 **Rationale:** To automate the build and deployment process for each service, ensuring faster iterations and reliable deployments. This includes setting up a new Artifact Registry, service-specific Cloud Build configurations, and triggers integrated with GitHub.
 **Implementation Details:**
@@ -146,3 +163,8 @@ The problem was multi-faceted:
     *   Configured three Cloud Build triggers, each monitoring a specific service folder and using "Included files filter" for precise triggering.
     *   Connected Developer Connect GitHub to the project's GitHub repository to enable automatic triggers on `master` branch commits.
     *   Ensured each trigger is associated with a dedicated service account possessing the necessary `Artifact Registry Writer` and `Service Account User` (on itself) permissions to handle image pushes and Cloud Run deployments.
+[2025-06-22 15:33:00] - **Decision:** Enhanced error handling in `main_service/main.py` to specifically catch `google.api_core.exceptions.MethodNotImplemented` for DLP API calls.
+**Rationale:** The log indicated `501 Received http2 header with status: 404` which maps to `MethodNotImplemented` in `google.api_core.exceptions`. Explicitly catching this exception provides a more precise error message and debugging guidance.
+**Implementation Details:**
+    *   Added `MethodNotImplemented` to the import list from `google.api_core.exceptions`.
+    *   Introduced a specific `except MethodNotImplemented as e:` block in `call_dlp_for_redaction` to handle this error, providing a detailed message about enabling the DLP API, checking service account roles, and verifying template existence.
