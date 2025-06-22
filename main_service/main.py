@@ -313,7 +313,7 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
 
         # Step 1: Ensure the expected infoType is explicitly included for inspection.
         # This is critical because likelihood boosting only works on infoTypes that are being inspected.
-        custom_info_types_config = DLP_CONFIG.get("custom_info_types", [])
+        custom_info_types_config = DLP_CONFIG.get("inspect_config", {}).get("custom_info_types", [])
         custom_type_definition = next((cit for cit in custom_info_types_config if cit.get("info_type", {}).get("name") == expected_type), None)
 
         if custom_type_definition:
