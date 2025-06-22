@@ -301,121 +301,50 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
     if not deidentify_template_name:
         logger.warning("DLP De-identify Template name not found in dlp_config.yaml. DLP de-identification might be impaired.")
 
-    # Prepare the base inspect_config from dlp_config.yaml, which will be used if no template is specified
-    # or as a fallback if a template is not found.
+    # Prepare the inspect_config. Start with the base config from the YAML file.
     base_inspect_config_from_yaml = DLP_CONFIG.get("inspect_config", {})
-
-    # Initialize dynamic_inspect_config to apply overrides/additions to the template or base config
-    dynamic_inspect_config = {}
+    final_inline_inspect_config = base_inspect_config_from_yaml.copy()
+    dynamic_context_applied = False
 
     if context and context.get("expected_pii_type"):
+        dynamic_context_applied = True
         expected_type = context.get("expected_pii_type")
         logger.info(f"Contextual PII type received: {expected_type}. Adjusting DLP scan dynamically.")
 
-        # Create a rule to boost the likelihood of the expected infoType. This is the correct
-        # way to supplement a template without overwriting its core `info_types` list.
-        # A generic hotword pattern is used to apply the boost across the entire transcript.
+        # Step 1: Ensure the expected infoType is explicitly included for inspection.
+        # This is critical because likelihood boosting only works on infoTypes that are being inspected.
+        custom_info_types_config = DLP_CONFIG.get("custom_info_types", [])
+        custom_type_definition = next((cit for cit in custom_info_types_config if cit.get("info_type", {}).get("name") == expected_type), None)
+
+        if custom_type_definition:
+            # It's a custom type. Add its full definition if not already present.
+            if "custom_info_types" not in final_inline_inspect_config:
+                final_inline_inspect_config["custom_info_types"] = []
+            existing_custom_types = {cit.get("info_type", {}).get("name") for cit in final_inline_inspect_config["custom_info_types"]}
+            if expected_type not in existing_custom_types:
+                final_inline_inspect_config["custom_info_types"].append(custom_type_definition)
+                logger.info(f"Added custom info type '{expected_type}' to final_inline_inspect_config.")
+        else:
+            # It's a built-in type. Add it to the info_types list if not already present.
+            if "info_types" not in final_inline_inspect_config:
+                final_inline_inspect_config["info_types"] = []
+            existing_info_types = {it.get("name") for it in final_inline_inspect_config["info_types"]}
+            if expected_type not in existing_info_types:
+                final_inline_inspect_config["info_types"].append({"name": expected_type})
+                logger.info(f"Added built-in info type '{expected_type}' to final_inline_inspect_config.")
+
+        # Step 2: Create a rule to boost the likelihood of all findings.
         rule = {
             "hotword_rule": {
-                "hotword_regex": {"pattern": ".+"},  # A regex that matches any text to apply the rule globally.
-                "proximity": {"window_before": 100, "window_after": 100},  # A large window to cover the utterance.
+                "hotword_regex": {"pattern": ".+"},
+                "proximity": {"window_before": 100, "window_after": 100},
                 "likelihood_adjustment": {"fixed_likelihood": dlp_v2.Likelihood.VERY_LIKELY}
             }
         }
-        
-        dynamic_inspect_config["rule_set"] = [
-            {
-                "info_types": [{"name": expected_type}],
-                "rules": [rule]
-            }
-        ]
-        logger.info(f"DLP inspection configured to boost likelihood for '{expected_type}' using a dynamic rule set.")
-
-    # Merge dynamic adjustments into the base_inspect_config_from_yaml to create the final inspect_config
-    # that will be used if no template is specified or as a fallback.
-    final_inline_inspect_config = base_inspect_config_from_yaml.copy() # Start with a copy to avoid modifying original DLP_CONFIG
-    if dynamic_inspect_config:
-# Ensure the expected_type is explicitly included in info_types for inspection
-        if "info_types" not in final_inline_inspect_config:
-            final_inline_inspect_config["info_types"] = []
-        
-        # Add the expected_type to info_types or custom_info_types if not already present
-        custom_info_types_from_config = DLP_CONFIG.get("inspect_config", {}).get("custom_info_types", [])
-        
-        # Check if expected_type is a custom info type
-        is_custom_info_type = False
-        custom_info_type_definition = None
-        for custom_it in custom_info_types_from_config:
-            if custom_it.get("info_type", {}).get("name") == expected_type:
-                is_custom_info_type = True
-                custom_info_type_definition = custom_it
-                break
-
-        if is_custom_info_type:
-            if "custom_info_types" not in final_inline_inspect_config:
-                final_inline_inspect_config["custom_info_types"] = []
-            
-            # Check if the custom info type is already in the final config
-            custom_type_already_present = False
-            for existing_custom_it in final_inline_inspect_config["custom_info_types"]:
-                if existing_custom_it.get("info_type", {}).get("name") == expected_type:
-                    custom_type_already_present = True
-                    break
-            
-            if not custom_type_already_present and custom_info_type_definition:
-                final_inline_inspect_config["custom_info_types"].append(custom_info_type_definition)
-                logger.info(f"Added custom info type '{expected_type}' to final_inline_inspect_config.")
-        else:
-            # It's a built-in info type, add to info_types list
-            expected_type_found_in_final_config = False
-            for it in final_inline_inspect_config["info_types"]:
-                if it.get("name") == expected_type:
-                    expected_type_found_in_final_config = True
-                    break
-            if not expected_type_found_in_final_config:
-                final_inline_inspect_config["info_types"].append({"name": expected_type})
-                logger.info(f"Added built-in info type '{expected_type}' to info_types in final_inline_inspect_config.")
-# Ensure the expected_type is explicitly included in info_types for inspection
-        if "info_types" not in final_inline_inspect_config:
-            final_inline_inspect_config["info_types"] = []
-        
-        # Add the expected_type to info_types if not already present
-        expected_type_found_in_final_config = False
-        # Check if expected_type is already in the info_types list
-        for it in final_inline_inspect_config["info_types"]:
-            if it.get("name") == expected_type:
-                expected_type_found_in_final_config = True
-                break
-        # If not found, add it
-        if not expected_type_found_in_final_config:
-            final_inline_inspect_config["info_types"].append({"name": expected_type})
-            logger.info(f"Added '{expected_type}' to info_types in final_inline_inspect_config.")
-        # Ensure the expected_type is explicitly included in info_types for inspection
-        if "info_types" not in final_inline_inspect_config:
-            final_inline_inspect_config["info_types"] = []
-        
-        # Add the expected_type to info_types if not already present
-        expected_type_found_in_final_config = False
-        # Check if expected_type is already in the info_types list
-        for it in final_inline_inspect_config["info_types"]:
-            if it.get("name") == expected_type:
-                expected_type_found_in_final_config = True
-                break
-        # If not found, add it
-        if not expected_type_found_in_final_config:
-            final_inline_inspect_config["info_types"].append({"name": expected_type})
-            logger.info(f"Added '{expected_type}' to info_types in final_inline_inspect_config.")
-
-        if "rule_set" in dynamic_inspect_config:
-            if "rule_set" not in final_inline_inspect_config:
-                final_inline_inspect_config["rule_set"] = []
-            final_inline_inspect_config["rule_set"].extend(dynamic_inspect_config["rule_set"])
-
-        for key, value in dynamic_inspect_config.items():
-            if key not in ["info_types", "rule_set"]:
-                final_inline_inspect_config[key] = value
-        
-        logger.info("Merged dynamic_inspect_config into final_inline_inspect_config.")
+        if "rule_set" not in final_inline_inspect_config:
+            final_inline_inspect_config["rule_set"] = []
+        final_inline_inspect_config["rule_set"].append({"rules": [rule]})
+        logger.info("DLP inspection configured to boost likelihood for all findings using a dynamic rule set.")
 
     # Define the default deidentify_config for fallback
     default_deidentify_config = DLP_CONFIG.get("deidentify_config", {
@@ -439,20 +368,17 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
         }
 
         # Configure inspection:
-        # If dynamic adjustments are made, use the fully merged inline inspect_config.
-        # Otherwise, if a template is specified, use the template.
-        # Fallback to base inline config if no dynamic context and no template.
-        if dynamic_inspect_config:
+        # If dynamic context was applied OR no template is specified, use the inline config.
+        # Otherwise, use the template. This ensures context-based changes are always applied.
+        if dynamic_context_applied or not inspect_template_name:
             request["inspect_config"] = final_inline_inspect_config
-            logger.info("Using fully merged inline inspect_config (dynamic context applied).")
+            logger.info("Using inline inspect_config (dynamic context applied or no template specified).")
         elif inspect_template_name:
             request["inspect_template_name"] = inspect_template_name
             logger.info(f"Using inspect_template_name: {inspect_template_name}")
         else:
-            request["inspect_config"] = base_inspect_config_from_yaml
-            logger.info("Using base inline inspect_config (no dynamic context, no template).")
-
-        # Configure de-identification: Prioritize template or use default inline config.
+            request["inspect_config"] = final_inline_inspect_config
+            logger.info("Using base inline inspect_config (no dynamic context, no template).")        # Configure de-identification: Prioritize template or use default inline config.
         if deidentify_template_name:
             request["deidentify_template_name"] = deidentify_template_name
             logger.info(f"Using deidentify_template_name: {deidentify_template_name}")
