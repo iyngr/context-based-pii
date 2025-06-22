@@ -168,3 +168,18 @@ The problem was multi-faceted:
 **Implementation Details:**
     *   Added `MethodNotImplemented` to the import list from `google.api_core.exceptions`.
     *   Introduced a specific `except MethodNotImplemented as e:` block in `call_dlp_for_redaction` to handle this error, providing a detailed message about enabling the DLP API, checking service account roles, and verifying template existence.
+[2025-06-22 19:06:53] - **Decision:** Resolved `NameError: name 'item' is not defined` in `main_service/main.py`.
+**Rationale:** The `item` field in the DLP API request was not correctly populated, leading to a `NameError`.
+**Implementation Details:**
+    *   Modified `main_service/main.py` at line 376 to change `"item": item` to `"item": {"value": transcript}`. This correctly passes the transcript content to the DLP API.
+[2025-06-22 19:06:53] - **Decision:** Confirmed and reinforced the use of global DLP client with regional parent paths for templates in `main_service`.
+**Rationale:** To ensure DLP API calls are correctly routed and utilize templates, even when the client is initialized globally. This addresses previous issues related to location mismatches and template access.
+**Implementation Details:**
+    *   The `dlp_client` is initialized globally without a specific region.
+    *   The `parent` parameter for DLP API calls is constructed using `projects/{current_gcp_project_id}/locations/{dlp_location}`, where `dlp_location` is fetched from `dlp_config.yaml` (defaulting to `us-central1`). This ensures that templates are referenced correctly within their respective regions.
+[2025-06-22 19:10:52] - **Decision:** Modified DLP inspection configuration logic in `main_service/main.py` to prioritize templates and supplement with dynamic configuration.
+**Rationale:** The previous logic for configuring DLP inspection was not optimally prioritizing templates when dynamic context was available. This change ensures that if an `inspect_template_name` is provided, it is used as the primary configuration, and any dynamic `inspect_config` (e.g., for boosting specific infoTypes) is applied as a supplement, rather than overwriting the template. If no template is specified, the fully merged inline configuration is used.
+**Implementation Details:**
+    *   Modified `main_service/main.py` at lines 379-389 to adjust the conditional logic for setting `request["inspect_template_name"]` and `request["inspect_config"]`.
+    *   The new logic checks for `inspect_template_name` first. If present, it sets the template name and then, if `dynamic_inspect_config` exists, it also sets `request["inspect_config"]` to `dynamic_inspect_config` to supplement the template.
+    *   If `inspect_template_name` is not present, it falls back to using `final_inline_inspect_config`.

@@ -376,16 +376,18 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
             "item": {"value": transcript},
         }
 
-        # Configure inspection: Prioritize dynamic config, then template, then base inline config.
-        if dynamic_inspect_config: # If dynamic adjustments were made, use the full inline config
-            request["inspect_config"] = final_inline_inspect_config
-            logger.info("Using fully merged inline inspect_config (dynamic context applied).")
-        elif inspect_template_name: # Otherwise, if a template is specified, use it
+        # Configure inspection: Prioritize template, supplement with dynamic config if available.
+        if inspect_template_name:
             request["inspect_template_name"] = inspect_template_name
             logger.info(f"Using inspect_template_name: {inspect_template_name}")
-        else: # Fallback to base inline config if no dynamic context and no template
-            request["inspect_config"] = base_inspect_config_from_yaml
-            logger.info("Using base inline inspect_config (no dynamic context, no template).")
+            # If there are dynamic adjustments, add them to supplement the template.
+            if dynamic_inspect_config:
+                request["inspect_config"] = dynamic_inspect_config
+                logger.info("Supplementing inspect template with dynamic context-based config.")
+        else:
+            # No template specified, so use the fully merged inline config.
+            request["inspect_config"] = final_inline_inspect_config
+            logger.info("Using fully merged inline inspect_config (no template name provided).")
 
         # Configure de-identification: Prioritize template or use default inline config.
         if deidentify_template_name:
