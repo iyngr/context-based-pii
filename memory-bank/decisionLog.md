@@ -183,3 +183,10 @@ The problem was multi-faceted:
     *   Modified `main_service/main.py` at lines 379-389 to adjust the conditional logic for setting `request["inspect_template_name"]` and `request["inspect_config"]`.
     *   The new logic checks for `inspect_template_name` first. If present, it sets the template name and then, if `dynamic_inspect_config` exists, it also sets `request["inspect_config"]` to `dynamic_inspect_config` to supplement the template.
     *   If `inspect_template_name` is not present, it falls back to using `final_inline_inspect_config`.
+[2025-06-22 19:22:18] - **Decision:** Reverted DLP inspection configuration logic in `main_service/main.py` to ensure all configured `info_types` are considered for redaction.
+**Rationale:** The previous modification to prioritize templates and supplement with dynamic configuration was found to be problematic. When both `inspect_template_name` and `inspect_config` are provided in the DLP API request, the API prioritizes the template, effectively ignoring the `inspect_config` which contains the full list of `info_types` from `dlp_config.yaml` and any dynamic rules. This led to missed redactions for `CREDIT_CARD_NUMBER` and `CVV_NUMBER`. The reverted logic ensures that if dynamic adjustments are made, or if no template is specified, the comprehensive `final_inline_inspect_config` (which merges `base_inspect_config_from_yaml` and `dynamic_inspect_config`) is always used as the `inspect_config` parameter.
+**Implementation Details:**
+    *   Reverted `main_service/main.py` at lines 379-389 to the previous logic:
+        *   If `dynamic_inspect_config` is present, `request["inspect_config"]` is set to `final_inline_inspect_config`.
+        *   If `inspect_template_name` is present (and no dynamic config), `request["inspect_template_name"]` is used.
+        *   Otherwise, `request["inspect_config"]` falls back to `base_inspect_config_from_yaml`.
