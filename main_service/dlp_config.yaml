@@ -1,3 +1,4 @@
+dlp_location: "us-central1"
 dlp_templates: 
   inspect_template_name: "projects/${PROJECT_ID}/locations/us-central1/inspectTemplates/identify"
   deidentify_template_name: "projects/${PROJECT_ID}/locations/us-central1/deidentifyTemplates/deidentify"

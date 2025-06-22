@@ -1,0 +1,33 @@
+steps:
+- id: 'Build subscriber-service image'
+  name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/subscriber-service-image:${SHORT_SHA}', '.']
+
+- id: 'Push subscriber-service image'
+  name: 'gcr.io/cloud-builders/docker'
+  args: ['push', '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/subscriber-service-image:${SHORT_SHA}']
+
+- id: 'Deploy subscriber-service to Cloud Run'
+  name: 'gcr.io/cloud-builders/gcloud'
+  args:
+    - 'run'
+    - 'deploy'
+    - 'subscriber-service'
+    - '--image'
+    - '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/subscriber-service-image:${SHORT_SHA}'
+    - '--region'
+    - 'us-central1'
+    - '--platform'
+    - 'managed'
+    - '--allow-unauthenticated'
+    - '--service-account'
+    - '${_SUBSCRIBER_SA}'
+    - '--set-env-vars'
+    - 'GCP_PROJECT_ID_FOR_SECRETS=${PROJECT_ID}'
+    - '--min-instances=0'
+    - '--max-instances=1'
+
+substitutions:
+  _GAR_LOCATION: 'us-central1'
+  _GAR_REPOSITORY: 'ccai-services'
+  _SUBSCRIBER_SA: 'transcript-processor-sa@${PROJECT_ID}.iam.gserviceaccount.com'

@@ -139,17 +139,6 @@ except Exception as e: # Catch any other unexpected errors during initialization
     # redis_client remains None
     # Consider if the app should exit(1) here if Redis is absolutely critical for startup
 
-
-# Initialize DLP client
-# For Cloud Run, it's generally okay to initialize clients globally as the container instance
-# stays warm between requests.
-try:
-    dlp_client = dlp_v2.DlpServiceClient()
-    logger.info("Successfully initialized DLP client.")
-except Exception as e:
-    logger.error(f"Could not initialize DLP client. Error: {str(e)}")
-    dlp_client = None
-
 # Load DLP configuration from dlp_config.yaml
 DLP_CONFIG = {}
 try:
@@ -158,10 +147,32 @@ try:
     logger.info("Successfully loaded dlp_config.yaml.")
 except FileNotFoundError:
     logger.error("dlp_config.yaml not found. DLP functionality might be impaired.")
+    DLP_CONFIG = {} # Ensure it's a dict
 except yaml.YAMLError as e:
     logger.error(f"Error decoding dlp_config.yaml: {str(e)}. DLP functionality might be impaired.")
+    DLP_CONFIG = {} # Ensure it's a dict
 except Exception as e:
     logger.error(f"An unexpected error occurred while loading dlp_config.yaml: {str(e)}")
+    DLP_CONFIG = {} # Ensure it's a dict
+
+
+# Initialize DLP client
+# For Cloud Run, it's generally okay to initialize clients globally as the container instance
+# stays warm between requests.
+dlp_client = None
+try:
+    dlp_location = DLP_CONFIG.get("dlp_location")
+    if dlp_location:
+        logger.info(f"DLP location specified: {dlp_location}. Initializing regional client.")
+        client_options = {"api_endpoint": f"{dlp_location}-dlp.googleapis.com"}
+        dlp_client = dlp_v2.DlpServiceClient(client_options=client_options)
+    else:
+        logger.info("No DLP location specified. Initializing global DLP client.")
+        dlp_client = dlp_v2.DlpServiceClient()
+    logger.info("Successfully initialized DLP client.")
+except Exception as e:
+    logger.error(f"Could not initialize DLP client. Error: {str(e)}")
+    # dlp_client remains None
 
 
 @app.route('/')
@@ -283,9 +294,14 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
         logger.warning("GOOGLE_CLOUD_PROJECT environment variable not configured correctly. Returning original transcript.")
         return transcript
 
+    dlp_location = DLP_CONFIG.get("dlp_location")
+
     item = {"value": transcript}
     logger.info(f"Using GCP_PROJECT_ID_FOR_SECRETS: '{current_gcp_project_id}'")
-    parent = f"projects/{current_gcp_project_id}"
+    if dlp_location:
+        parent = f"projects/{current_gcp_project_id}/locations/{dlp_location}"
+    else:
+        parent = f"projects/{current_gcp_project_id}"
 
     # Get template names from DLP_CONFIG
     dlp_templates = DLP_CONFIG.get("dlp_templates", {})

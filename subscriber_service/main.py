@@ -42,8 +42,9 @@ def get_secret(secret_id, version_id="latest", project_id=None):
         client = SecretManagerServiceClient()
         name = f"projects/{project_id}/secrets/{secret_id}/versions/{version_id}"
         response = client.access_secret_version(name=name)
-        payload = response.payload.data.decode("UTF-8")
-        logger.info(f"Successfully fetched secret: {secret_id} (version: {version_id})")
+        # Strip whitespace/newlines from the fetched secret
+        payload = response.payload.data.decode("UTF-8").strip()
+        logger.info(f"Successfully fetched secret: {secret_id}")
         return payload
     except NotFound:
         logger.error(f"Secret {secret_id} (version: {version_id}) not found in project {project_id}.")
@@ -90,6 +91,20 @@ def load_secrets():
 
 load_secrets()
 
+def get_full_topic_path(topic_name, project_id):
+    """Constructs the full Pub/Sub topic path if not already provided."""
+    if not topic_name or not project_id:
+        return None
+    
+    # Clean up inputs just in case
+    clean_topic_name = topic_name.strip()
+    clean_project_id = project_id.strip()
+
+    if clean_topic_name.startswith("projects/"):
+        return clean_topic_name
+    
+    topic_name_only = clean_topic_name.split('/')[-1]
+    return f"projects/{clean_project_id}/topics/{topic_name_only}"
 
 publisher = None
 
@@ -185,14 +200,8 @@ def process_transcript_event():
                     # After processing, publish the original agent utterance.
                     # Agent utterances are not redacted, so we use the original transcript.
                     if publisher and REDACTED_TOPIC_NAME:
-                        clean_redacted_topic_name = REDACTED_TOPIC_NAME.strip()
-                        clean_subscriber_gcp_project_id = SUBSCRIBER_GCP_PROJECT_ID.strip()
+                        full_redacted_topic_path = get_full_topic_path(REDACTED_TOPIC_NAME, SUBSCRIBER_GCP_PROJECT_ID)
 
-                        full_redacted_topic_path = clean_redacted_topic_name
-                        if not clean_redacted_topic_name.startswith("projects/"):
-                            topic_name_only = clean_redacted_topic_name.split('/')[-1]
-                            full_redacted_topic_path = f"projects/{clean_subscriber_gcp_project_id}/topics/{topic_name_only}"
-                    
                         publish_payload = {
                             "conversation_id": conversation_id,
                             "original_entry_index": entry_index,
@@ -221,14 +230,8 @@ def process_transcript_event():
                     redacted_transcript = response_data.get('redacted_transcript')
                     if redacted_transcript is not None:
                         if publisher and REDACTED_TOPIC_NAME:
-                            clean_redacted_topic_name = REDACTED_TOPIC_NAME.strip()
-                            clean_subscriber_gcp_project_id = SUBSCRIBER_GCP_PROJECT_ID.strip()
+                            full_redacted_topic_path = get_full_topic_path(REDACTED_TOPIC_NAME, SUBSCRIBER_GCP_PROJECT_ID)
 
-                            full_redacted_topic_path = clean_redacted_topic_name
-                            if not clean_redacted_topic_name.startswith("projects/"):
-                                topic_name_only = clean_redacted_topic_name.split('/')[-1]
-                                full_redacted_topic_path = f"projects/{clean_subscriber_gcp_project_id}/topics/{topic_name_only}"
-                        
                             publish_payload = {
                                 "conversation_id": conversation_id,
                                 "original_entry_index": entry_index,

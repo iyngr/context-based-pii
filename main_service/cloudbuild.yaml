@@ -1,0 +1,38 @@
+steps:
+- id: 'Build context-manager image'
+  name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/context-manager-image:${SHORT_SHA}', '.']
+
+- id: 'Push context-manager image'
+  name: 'gcr.io/cloud-builders/docker'
+  args: ['push', '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/context-manager-image:${SHORT_SHA}']
+
+- id: 'Deploy context-manager to Cloud Run'
+  name: 'gcr.io/cloud-builders/gcloud'
+  args:
+    - 'run'
+    - 'deploy'
+    - 'context-manager'
+    - '--image'
+    - '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/context-manager-image:${SHORT_SHA}'
+    - '--region'
+    - 'us-central1'
+    - '--platform'
+    - 'managed'
+    - '--allow-unauthenticated'
+    - '--service-account'
+    - '${_MAIN_SERVICE_SA}'
+    - '--vpc-connector'
+    - '${_VPC_CONNECTOR}'
+    - '--vpc-egress'
+    - 'all'
+    - '--set-env-vars'
+    - 'GOOGLE_CLOUD_PROJECT=${PROJECT_ID},CONTEXT_TTL_SECONDS=90'
+    - '--min-instances=0'
+    - '--max-instances=1'
+
+substitutions:
+  _GAR_LOCATION: 'us-central1'
+  _GAR_REPOSITORY: 'ccai-services'
+  _MAIN_SERVICE_SA: 'context-manager-sa@${PROJECT_ID}.iam.gserviceaccount.com'
+  _VPC_CONNECTOR: 'redis-connector'
