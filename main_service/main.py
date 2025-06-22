@@ -335,15 +335,52 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
     # that will be used if no template is specified or as a fallback.
     final_inline_inspect_config = base_inspect_config_from_yaml.copy() # Start with a copy to avoid modifying original DLP_CONFIG
     if dynamic_inspect_config:
-        if "info_types" in dynamic_inspect_config:
-            if "info_types" not in final_inline_inspect_config:
-                final_inline_inspect_config["info_types"] = []
-            
-            existing_info_type_names = {it["name"] for it in final_inline_inspect_config["info_types"]}
-            for new_info_type in dynamic_inspect_config["info_types"]:
-                if new_info_type["name"] not in existing_info_type_names:
-                    final_inline_inspect_config["info_types"].append(new_info_type)
-            
+# Ensure the expected_type is explicitly included in info_types for inspection
+        if "info_types" not in final_inline_inspect_config:
+            final_inline_inspect_config["info_types"] = []
+        
+        # Add the expected_type to info_types if not already present
+        expected_type_found_in_final_config = False
+        # Check if expected_type is already in the info_types list
+        for it in final_inline_inspect_config["info_types"]:
+            if it.get("name") == expected_type:
+                expected_type_found_in_final_config = True
+                break
+        # If not found, add it
+        if not expected_type_found_in_final_config:
+            final_inline_inspect_config["info_types"].append({"name": expected_type})
+            logger.info(f"Added '{expected_type}' to info_types in final_inline_inspect_config.")
+# Ensure the expected_type is explicitly included in info_types for inspection
+        if "info_types" not in final_inline_inspect_config:
+            final_inline_inspect_config["info_types"] = []
+        
+        # Add the expected_type to info_types if not already present
+        expected_type_found_in_final_config = False
+        # Check if expected_type is already in the info_types list
+        for it in final_inline_inspect_config["info_types"]:
+            if it.get("name") == expected_type:
+                expected_type_found_in_final_config = True
+                break
+        # If not found, add it
+        if not expected_type_found_in_final_config:
+            final_inline_inspect_config["info_types"].append({"name": expected_type})
+            logger.info(f"Added '{expected_type}' to info_types in final_inline_inspect_config.")
+        # Ensure the expected_type is explicitly included in info_types for inspection
+        if "info_types" not in final_inline_inspect_config:
+            final_inline_inspect_config["info_types"] = []
+        
+        # Add the expected_type to info_types if not already present
+        expected_type_found_in_final_config = False
+        # Check if expected_type is already in the info_types list
+        for it in final_inline_inspect_config["info_types"]:
+            if it.get("name") == expected_type:
+                expected_type_found_in_final_config = True
+                break
+        # If not found, add it
+        if not expected_type_found_in_final_config:
+            final_inline_inspect_config["info_types"].append({"name": expected_type})
+            logger.info(f"Added '{expected_type}' to info_types in final_inline_inspect_config.")
+
         if "rule_set" in dynamic_inspect_config:
             if "rule_set" not in final_inline_inspect_config:
                 final_inline_inspect_config["rule_set"] = []
@@ -376,14 +413,17 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
             "item": {"value": transcript},
         }
 
-        # Configure inspection: Prioritize dynamic config, then template, then base inline config.
-        if dynamic_inspect_config: # If dynamic adjustments were made, use the full inline config
+        # Configure inspection:
+        # If dynamic adjustments are made, use the fully merged inline inspect_config.
+        # Otherwise, if a template is specified, use the template.
+        # Fallback to base inline config if no dynamic context and no template.
+        if dynamic_inspect_config:
             request["inspect_config"] = final_inline_inspect_config
             logger.info("Using fully merged inline inspect_config (dynamic context applied).")
-        elif inspect_template_name: # Otherwise, if a template is specified, use it
+        elif inspect_template_name:
             request["inspect_template_name"] = inspect_template_name
             logger.info(f"Using inspect_template_name: {inspect_template_name}")
-        else: # Fallback to base inline config if no dynamic context and no template
+        else:
             request["inspect_config"] = base_inspect_config_from_yaml
             logger.info("Using base inline inspect_config (no dynamic context, no template).")
 
