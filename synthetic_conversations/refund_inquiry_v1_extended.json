@@ -115,7 +115,7 @@
         },
         {
             "start_timestamp_usec": 1760000075000000,
-            "text": "Oh, really? Okay, it's 4111222233334444.",
+            "text": "Oh, really? Okay, it's 4141121223235009.",
             "role": "END_USER",
             "user_id": 1,
             "original_entry_index": 15
@@ -129,7 +129,7 @@
         },
         {
             "start_timestamp_usec": 1760000085000000,
-            "text": "It's 123.",
+            "text": "It's 709.",
             "role": "END_USER",
             "user_id": 1,
             "original_entry_index": 17

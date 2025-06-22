@@ -195,3 +195,10 @@ The problem was multi-faceted:
 **Implementation Details:**
     *   **Reverted `inspect_config` precedence logic:** Modified `main_service/main.py` at lines 386-395 to ensure that if `dynamic_inspect_config` is present (indicating an `expected_pii_type`), the `final_inline_inspect_config` (which is a comprehensive merge of base config and dynamic rules) is always used as `request["inspect_config"]`. The `inspect_template_name` is only used if no dynamic configuration is present.
     *   **Explicitly added `expected_pii_type` to `info_types`:** Inserted logic at line 338 in `main_service/main.py` to explicitly add the `expected_pii_type` (e.g., `CREDIT_CARD_NUMBER`) to the `info_types` list within `final_inline_inspect_config` if it's not already present. This guarantees that DLP is explicitly instructed to look for that specific PII type, in addition to any likelihood boosting rules.
+[2025-06-22 19:44:01] - **Decision:** Modified DLP inspection configuration logic in `main_service/main.py` to correctly handle custom info types like `SOCIAL_HANDLE`.
+**Rationale:** The previous implementation for dynamically adding `expected_pii_type` to the DLP inspection configuration treated all `expected_type` values as built-in info types. This caused an "Invalid built-in info type name" error when a custom info type like `SOCIAL_HANDLE` was encountered, as custom info types require their full definition (including regex pattern) to be provided under `custom_info_types` in the `inspect_config`.
+**Implementation Details:**
+    *   Modified `main_service/main.py` at lines 343-352 to differentiate between built-in and custom info types.
+    *   The updated logic now checks if the `expected_type` is present in the `custom_info_types` section of `DLP_CONFIG`.
+    *   If it's a custom info type, its full definition is added to `final_inline_inspect_config["custom_info_types"]`.
+    *   If it's a built-in info type, its name is added to `final_inline_inspect_config["info_types"]`, as before.

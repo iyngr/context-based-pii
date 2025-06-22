@@ -339,17 +339,42 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
         if "info_types" not in final_inline_inspect_config:
             final_inline_inspect_config["info_types"] = []
         
-        # Add the expected_type to info_types if not already present
-        expected_type_found_in_final_config = False
-        # Check if expected_type is already in the info_types list
-        for it in final_inline_inspect_config["info_types"]:
-            if it.get("name") == expected_type:
-                expected_type_found_in_final_config = True
+        # Add the expected_type to info_types or custom_info_types if not already present
+        custom_info_types_from_config = DLP_CONFIG.get("inspect_config", {}).get("custom_info_types", [])
+        
+        # Check if expected_type is a custom info type
+        is_custom_info_type = False
+        custom_info_type_definition = None
+        for custom_it in custom_info_types_from_config:
+            if custom_it.get("info_type", {}).get("name") == expected_type:
+                is_custom_info_type = True
+                custom_info_type_definition = custom_it
                 break
-        # If not found, add it
-        if not expected_type_found_in_final_config:
-            final_inline_inspect_config["info_types"].append({"name": expected_type})
-            logger.info(f"Added '{expected_type}' to info_types in final_inline_inspect_config.")
+
+        if is_custom_info_type:
+            if "custom_info_types" not in final_inline_inspect_config:
+                final_inline_inspect_config["custom_info_types"] = []
+            
+            # Check if the custom info type is already in the final config
+            custom_type_already_present = False
+            for existing_custom_it in final_inline_inspect_config["custom_info_types"]:
+                if existing_custom_it.get("info_type", {}).get("name") == expected_type:
+                    custom_type_already_present = True
+                    break
+            
+            if not custom_type_already_present and custom_info_type_definition:
+                final_inline_inspect_config["custom_info_types"].append(custom_info_type_definition)
+                logger.info(f"Added custom info type '{expected_type}' to final_inline_inspect_config.")
+        else:
+            # It's a built-in info type, add to info_types list
+            expected_type_found_in_final_config = False
+            for it in final_inline_inspect_config["info_types"]:
+                if it.get("name") == expected_type:
+                    expected_type_found_in_final_config = True
+                    break
+            if not expected_type_found_in_final_config:
+                final_inline_inspect_config["info_types"].append({"name": expected_type})
+                logger.info(f"Added built-in info type '{expected_type}' to info_types in final_inline_inspect_config.")
 # Ensure the expected_type is explicitly included in info_types for inspection
         if "info_types" not in final_inline_inspect_config:
             final_inline_inspect_config["info_types"] = []
