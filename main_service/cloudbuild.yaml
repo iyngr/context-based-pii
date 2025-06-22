@@ -36,3 +36,6 @@ substitutions:
   _GAR_REPOSITORY: 'ccai-services'
   _MAIN_SERVICE_SA: 'context-manager-sa@${PROJECT_ID}.iam.gserviceaccount.com'
   _VPC_CONNECTOR: 'redis-connector'
+
+options:
+  logging: CLOUD_LOGGING_ONLY

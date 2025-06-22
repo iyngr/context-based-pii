@@ -31,3 +31,6 @@ substitutions:
   _GAR_LOCATION: 'us-central1'
   _GAR_REPOSITORY: 'ccai-services'
   _SUBSCRIBER_SA: 'transcript-processor-sa@${PROJECT_ID}.iam.gserviceaccount.com'
+
+options:
+  logging: CLOUD_LOGGING_ONLY

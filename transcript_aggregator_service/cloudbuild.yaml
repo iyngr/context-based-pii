@@ -32,3 +32,6 @@ substitutions:
   _GAR_REPOSITORY: 'ccai-services'
   _AGGREGATOR_SA: 'transcript-aggregator-sa@${PROJECT_ID}.iam.gserviceaccount.com'
   _AGGREGATED_BUCKET: 'pg-transcript'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
