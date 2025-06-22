@@ -44,9 +44,9 @@ To grant these:
 
 ## 3. Verify Template Location and Project ID
 
-Double-check that the templates referenced in your `main_service/dlp_config.yaml` (e.g., `projects/trans-market-458313-u3/locations/us-central1/inspectTemplates/identify`) exactly match the actual location and project ID where your DLP templates are created.
+Double-check that the templates referenced in your `main_service/dlp_config.yaml` (e.g., `us-central1/inspectTemplates/identify`) exactly match the actual location and project ID where your DLP templates are created.
 
-*   **Project ID:** Ensure `trans-market-458313-u3` is indeed your correct project ID.
+*   **Project ID:** Ensure is indeed your correct project ID.
 *   **Location:** Confirm that your templates are in `us-central1`. If they are in a different region (e.g., `us-east1`), you must update `main_service/dlp_config.yaml` and redeploy `main_service`.
 
 ## 4. Redeploy `main_service` (Optional but Recommended)
