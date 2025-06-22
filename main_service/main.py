@@ -343,8 +343,11 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
         }
         if "rule_set" not in final_inline_inspect_config:
             final_inline_inspect_config["rule_set"] = []
-        final_inline_inspect_config["rule_set"].append({"rules": [rule]})
-        logger.info("DLP inspection configured to boost likelihood for all findings using a dynamic rule set.")
+        final_inline_inspect_config["rule_set"].append({
+            "info_types": [{"name": expected_type}], # Specify the info_type for the rule set
+            "rules": [rule]
+        })
+        logger.info(f"DLP inspection configured to boost likelihood for '{expected_type}' using a dynamic rule set.")
 
     # Define the default deidentify_config for fallback
     default_deidentify_config = DLP_CONFIG.get("deidentify_config", {

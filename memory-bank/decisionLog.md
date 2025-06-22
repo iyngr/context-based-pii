@@ -227,3 +227,7 @@ The problem was multi-faceted:
         *   It is explicitly added to the `final_inline_inspect_config`'s `info_types` or `custom_info_types` list, respectively.
         *   A likelihood-boosting rule is applied to all findings.
         *   This `final_inline_inspect_config` is then correctly prioritized over a generic DLP template in the `deidentify_content` request.
+[2025-06-22 20:21:09] - **Decision:** Corrected DLP inspection `rule_set` configuration in `main_service/main.py` to explicitly specify `info_types`.
+**Rationale:** The DLP API returned an error "Inspection rule set should have `info_types` specified," indicating that the `rule_set` must explicitly list the `info_types` it applies to. The previous attempt to apply the rule broadly by omitting `info_types` was incorrect. This change ensures the likelihood-boosting rule is correctly applied to the `expected_pii_type` while satisfying the API's requirement.
+**Implementation Details:**
+    *   Modified `main_service/main.py` at lines 344-347 to include `info_types: [{"name": expected_type}]` within the `rule_set` definition in `final_inline_inspect_config`. This ensures the dynamic likelihood-boosting rule is correctly scoped to the `expected_pii_type`.
