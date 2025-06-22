@@ -322,35 +322,24 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
         expected_type = context.get("expected_pii_type")
         logger.info(f"Contextual PII type received: {expected_type}. Adjusting DLP scan dynamically.")
 
-        # Boost likelihood for the expected type
-        dynamic_inspect_config["min_likelihood"] = dlp_v2.Likelihood.LIKELY
-
-        # Dynamically add the expected PII type to info_types if not already present
-        if "info_types" not in dynamic_inspect_config:
-            dynamic_inspect_config["info_types"] = []
-        dynamic_inspect_config["info_types"].append({"name": expected_type})
-
-        # Example: Add a hotword rule dynamically for PHONE_NUMBER
-        if expected_type == "PHONE_NUMBER":
-            if "rule_set" not in dynamic_inspect_config:
-                dynamic_inspect_config["rule_set"] = []
-            dynamic_inspect_config["rule_set"].append(
-                {
-                    "info_types": [{"name": "PHONE_NUMBER"}],
-                    "rules": [
-                        {
-                            "hotword_rule": {
-                                "hotword_regex": {"pattern": "(?i)call|contact|number"},
-                                "proximity": {"window_before": 20, "window_after": 20},
-                                "likelihood_adjustment": {"fixed_likelihood": dlp_v2.Likelihood.VERY_LIKELY},
-                            }
-                        }
-                    ],
-                }
-            )
-            logger.info("DLP inspection configured for PHONE_NUMBER context with increased sensitivity and hotword rule.")
-        else:
-            logger.info(f"DLP inspection configured to include {expected_type} with increased sensitivity.")
+        # Create a rule to boost the likelihood of the expected infoType. This is the correct
+        # way to supplement a template without overwriting its core `info_types` list.
+        # A generic hotword pattern is used to apply the boost across the entire transcript.
+        rule = {
+            "hotword_rule": {
+                "hotword_regex": {"pattern": ".+"},  # A regex that matches any text to apply the rule globally.
+                "proximity": {"window_before": 100, "window_after": 100},  # A large window to cover the utterance.
+                "likelihood_adjustment": {"fixed_likelihood": dlp_v2.Likelihood.VERY_LIKELY}
+            }
+        }
+        
+        dynamic_inspect_config["rule_set"] = [
+            {
+                "info_types": [{"name": expected_type}],
+                "rules": [rule]
+            }
+        ]
+        logger.info(f"DLP inspection configured to boost likelihood for '{expected_type}' using a dynamic rule set.")
 
     # Merge dynamic adjustments into the base_inspect_config_from_yaml to create the final inspect_config
     # that will be used if no template is specified or as a fallback.
@@ -397,7 +386,7 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
             "item": item,
         }
 
-        # Configure inspection: Prioritize template, supplement with dynamic config, or use full inline config.
+        # Configure inspection: Prioritize template, supplement with dynamic config if available.
         if inspect_template_name:
             request["inspect_template_name"] = inspect_template_name
             logger.info(f"Using inspect_template_name: {inspect_template_name}")
