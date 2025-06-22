@@ -1,0 +1,50 @@
+graph LR
+    subgraph Ingestion & Initial Processing
+        A[User/Agent Assist] --> B(Raw Transcripts Pub/Sub Topic)
+        B --> C[Subscriber Service]
+        C --> D[Secret Manager]
+    end
+
+    subgraph Context & Redaction
+        D --> E[Main Service]
+        E --> F[Serverless VPC Access]
+        F --> G[Cloud Memorystore for Redis]
+        E --> H[Cloud Data Loss Prevention (DLP)]
+        C --> E
+        E --> I(Redacted Transcripts Pub/Sub Topic)
+    end
+
+    subgraph Aggregation & Storage
+        I --> J[Transcript Aggregator Service]
+        J --> K[Cloud Firestore]
+        J --> L[Cloud Storage Buckets]
+    end
+
+    subgraph Analysis & Insights
+        J --> M[CCAI Conversation Insights]
+    end
+
+    subgraph CI/CD
+        N[GitHub/Source Repository] --> O[Cloud Build]
+        O --> P[Artifact Registry]
+        O --> C
+        O --> E
+        O --> J
+    end
+
+    style A fill:#f9f,stroke:#333,stroke-width:2px
+    style B fill:#f9f,stroke:#333,stroke-width:2px
+    style C fill:#f9f,stroke:#333,stroke-width:2px
+    style D fill:#f9f,stroke:#333,stroke-width:2px
+    style E fill:#f9f,stroke:#333,stroke-width:2px
+    style F fill:#f9f,stroke:#333,stroke-width:2px
+    style G fill:#f9f,stroke:#333,stroke-width:2px
+    style H fill:#f9f,stroke:#333,stroke-width:2px
+    style I fill:#f9f,stroke:#333,stroke-width:2px
+    style J fill:#f9f,stroke:#333,stroke-width:2px
+    style K fill:#f9f,stroke:#333,stroke-width:2px
+    style L fill:#f9f,stroke:#333,stroke-width:2px
+    style M fill:#f9f,stroke:#333,stroke-width:2px
+    style N fill:#f9f,stroke:#333,stroke-width:2px
+    style O fill:#f9f,stroke:#333,stroke-width:2px
+    style P fill:#f9f,stroke:#333,stroke-width:2px
