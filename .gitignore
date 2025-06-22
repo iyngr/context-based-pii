@@ -17,5 +17,5 @@ __pycache__/
 # Ignore test output files
 test_output/
 logs.txt
-dlp_redaction_test.py
 test.py
+dlp_redaction_test.py

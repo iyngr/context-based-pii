@@ -156,18 +156,13 @@ except Exception as e:
     DLP_CONFIG = {} # Ensure it's a dict
 
 
-# Initialize DLP client
+# Initialize DLP client to use the global endpoint
 # For Cloud Run, it's generally okay to initialize clients globally as the container instance
 # stays warm between requests.
 dlp_client = None
 try:
-    # Default to the primary region 'us-central1' if not specified in the config.
-    # Using a regional endpoint is critical when egressing through a VPC.
-    dlp_location = DLP_CONFIG.get("dlp_location", "us-central1")
-    endpoint = f"{dlp_location}-dlp.googleapis.com"
-    logger.info(f"Initializing regional DLP client for location '{dlp_location}' at endpoint '{endpoint}'.")
-    client_options = {"api_endpoint": endpoint}
-    dlp_client = dlp_v2.DlpServiceClient(client_options=client_options)
+    logger.info("Initializing global DLP client.")
+    dlp_client = dlp_v2.DlpServiceClient()
     logger.info("Successfully initialized DLP client.")
 except Exception as e:
     logger.error(f"Could not initialize DLP client. Error: {str(e)}")
@@ -292,10 +287,6 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
         logger.warning("GOOGLE_CLOUD_PROJECT environment variable not configured correctly. Returning original transcript.")
         return transcript
 
-    dlp_location = DLP_CONFIG.get("dlp_location")
-
-    item = {"value": transcript}
-    logger.info(f"Using GCP_PROJECT_ID_FOR_SECRETS: '{current_gcp_project_id}'")
     # Always use the regional parent path for templates, even with a global client
     dlp_location = DLP_CONFIG.get("dlp_location", "us-central1") # Default to us-central1
     parent = f"projects/{current_gcp_project_id}/locations/{dlp_location}"
@@ -385,18 +376,16 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
             "item": item,
         }
 
-        # Configure inspection: Prioritize template, supplement with dynamic config if available.
-        if inspect_template_name:
+        # Configure inspection: Prioritize dynamic config, then template, then base inline config.
+        if dynamic_inspect_config: # If dynamic adjustments were made, use the full inline config
+            request["inspect_config"] = final_inline_inspect_config
+            logger.info("Using fully merged inline inspect_config (dynamic context applied).")
+        elif inspect_template_name: # Otherwise, if a template is specified, use it
             request["inspect_template_name"] = inspect_template_name
             logger.info(f"Using inspect_template_name: {inspect_template_name}")
-            # If there are dynamic adjustments, add them to supplement the template.
-            if dynamic_inspect_config:
-                request["inspect_config"] = dynamic_inspect_config
-                logger.info("Supplementing inspect template with dynamic context-based config.")
-        else:
-            # No template specified, so use the fully merged inline config.
-            request["inspect_config"] = final_inline_inspect_config
-            logger.info("Using fully merged inline inspect_config (no template name provided).")
+        else: # Fallback to base inline config if no dynamic context and no template
+            request["inspect_config"] = base_inspect_config_from_yaml
+            logger.info("Using base inline inspect_config (no dynamic context, no template).")
 
         # Configure de-identification: Prioritize template or use default inline config.
         if deidentify_template_name:
