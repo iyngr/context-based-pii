@@ -1,6 +1,6 @@
-Flask==2.3.2
-redis==5.0.4
-google-cloud-dlp==3.14.0
-gunicorn==22.0.0
-google-cloud-secret-manager==2.19.0
-PyYAML==6.0.1
+Flask
+redis
+google-cloud-dlp
+gunicorn
+google-cloud-secret-manager
+PyYAML

@@ -1,5 +1,5 @@
-google-cloud-pubsub==2.18.4
-requests==2.31.0
-google-cloud-secret-manager==2.19.0
-Flask==2.3.2
-gunicorn==22.0.0
+google-cloud-pubsub
+requests
+google-cloud-secret-manager
+Flask
+gunicorn
