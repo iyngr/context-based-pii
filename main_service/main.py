@@ -296,10 +296,9 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
 
     item = {"value": transcript}
     logger.info(f"Using GCP_PROJECT_ID_FOR_SECRETS: '{current_gcp_project_id}'")
-    if dlp_location:
-        parent = f"projects/{current_gcp_project_id}/locations/{dlp_location}"
-    else:
-        parent = f"projects/{current_gcp_project_id}"
+    # Always use the regional parent path for templates, even with a global client
+    dlp_location = DLP_CONFIG.get("dlp_location", "us-central1") # Default to us-central1
+    parent = f"projects/{current_gcp_project_id}/locations/{dlp_location}"
 
     # Get template names from DLP_CONFIG
     dlp_templates = DLP_CONFIG.get("dlp_templates", {})
@@ -438,7 +437,7 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
         return f"[DLP_PERMISSION_DENIED_ERROR] {transcript}"
 
     except MethodNotImplemented as e:
-        logger.error(f"DLP API Error (501 Method Not Implemented): The DLP service or the 'deidentify_content' method might not be enabled or accessible in project '{current_gcp_project_id}' in region '{dlp_location}'. Please ensure the DLP API is enabled, the service account has 'DLP User' role, and the templates exist. Original error: {str(e)}")
+        logger.error(f"DLP API Error: {str(e)}")
         return f"[DLP_METHOD_NOT_IMPLEMENTED_ERROR] {transcript}"
     except GoogleAPICallError as e:
         if hasattr(e, 'code') and e.code == 404:
