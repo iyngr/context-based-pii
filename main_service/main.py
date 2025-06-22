@@ -449,7 +449,7 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
         logger.error(f"DLP API Error: Permission denied for project '{current_gcp_project_id}'. Ensure the service account has 'DLP User' role. Error: {str(e)}")
         return f"[DLP_PERMISSION_DENIED_ERROR] {transcript}"
 
-    except dlp_v2.exceptions.MethodNotImplemented as e:
+    except MethodNotImplemented as e:
         logger.error(f"DLP API Error (501 Method Not Implemented): The DLP service or the 'deidentify_content' method might not be enabled or accessible in project '{current_gcp_project_id}' in region '{dlp_location}'. Please ensure the DLP API is enabled, the service account has 'DLP User' role, and the templates exist. Original error: {str(e)}")
         return f"[DLP_METHOD_NOT_IMPLEMENTED_ERROR] {transcript}"
     except GoogleAPICallError as e:
