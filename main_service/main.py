@@ -283,7 +283,6 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
     Calls Google DLP to de-identify PII in the transcript.
     Uses context if available to tailor the DLP request.
     """
-    global dlp_client # Ensure we are using the globally initialized client
     if not dlp_client:
         logger.warning("DLP client not available. Returning original transcript.")
         return transcript
@@ -313,7 +312,11 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
     if not deidentify_template_name:
         logger.warning("DLP De-identify Template name not found in dlp_config.yaml. DLP de-identification might be impaired.")
 
-    # Initialize dynamic_inspect_config to apply overrides/additions to the template
+    # Prepare the base inspect_config from dlp_config.yaml, which will be used if no template is specified
+    # or as a fallback if a template is not found.
+    base_inspect_config_from_yaml = DLP_CONFIG.get("inspect_config", {})
+
+    # Initialize dynamic_inspect_config to apply overrides/additions to the template or base config
     dynamic_inspect_config = {}
 
     if context and context.get("expected_pii_type"):
@@ -324,7 +327,6 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
         dynamic_inspect_config["min_likelihood"] = dlp_v2.Likelihood.LIKELY
 
         # Dynamically add the expected PII type to info_types if not already present
-        # This ensures the template's info_types are supplemented
         if "info_types" not in dynamic_inspect_config:
             dynamic_inspect_config["info_types"] = []
         dynamic_inspect_config["info_types"].append({"name": expected_type})
@@ -351,80 +353,104 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
         else:
             logger.info(f"DLP inspection configured to include {expected_type} with increased sensitivity.")
 
+    # Merge dynamic adjustments into the base_inspect_config_from_yaml to create the final inspect_config
+    # that will be used if no template is specified or as a fallback.
+    final_inline_inspect_config = base_inspect_config_from_yaml.copy() # Start with a copy to avoid modifying original DLP_CONFIG
+    if dynamic_inspect_config:
+        if "info_types" in dynamic_inspect_config:
+            if "info_types" not in final_inline_inspect_config:
+                final_inline_inspect_config["info_types"] = []
+            
+            existing_info_type_names = {it["name"] for it in final_inline_inspect_config["info_types"]}
+            for new_info_type in dynamic_inspect_config["info_types"]:
+                if new_info_type["name"] not in existing_info_type_names:
+                    final_inline_inspect_config["info_types"].append(new_info_type)
+            
+        if "rule_set" in dynamic_inspect_config:
+            if "rule_set" not in final_inline_inspect_config:
+                final_inline_inspect_config["rule_set"] = []
+            final_inline_inspect_config["rule_set"].extend(dynamic_inspect_config["rule_set"])
+
+        for key, value in dynamic_inspect_config.items():
+            if key not in ["info_types", "rule_set"]:
+                final_inline_inspect_config[key] = value
+        
+        logger.info("Merged dynamic_inspect_config into final_inline_inspect_config.")
+
+    # Define the default deidentify_config for fallback
+    default_deidentify_config = DLP_CONFIG.get("deidentify_config", {
+        "info_type_transformations": {
+            "transformations": [
+                {
+                    "primitive_transformation": {
+                        "replace_with_info_type_config": {}
+                    }
+                }
+            ]
+        }
+    })
+
     try:
         logger.info(f"Sending request to DLP API for project_id: {current_gcp_project_id}, transcript_preview: {transcript[:100]}")
         
-        request_body = {
+        request = {
             "parent": parent,
             "item": item,
         }
 
-        # Initialize inspect_config for the request
-        request_inspect_config = {}
-
+        # Configure inspection: Prioritize template, supplement with dynamic config, or use full inline config.
         if inspect_template_name:
-            request_body["inspect_template_name"] = inspect_template_name
+            request["inspect_template_name"] = inspect_template_name
             logger.info(f"Using inspect_template_name: {inspect_template_name}")
+            # If there are dynamic adjustments, add them to supplement the template.
+            if dynamic_inspect_config:
+                request["inspect_config"] = dynamic_inspect_config
+                logger.info("Supplementing inspect template with dynamic context-based config.")
         else:
-            # If no inspect template, use the static inspect_config from dlp_config.yaml as base
-            request_inspect_config = DLP_CONFIG.get("inspect_config", {})
-            logger.info("Using base inspect_config from dlp_config.yaml.")
+            # No template specified, so use the fully merged inline config.
+            request["inspect_config"] = final_inline_inspect_config
+            logger.info("Using fully merged inline inspect_config (no template name provided).")
 
-        # Merge dynamic adjustments (from context) into the determined inspect_config
-        if dynamic_inspect_config:
-            # Handle info_types merging specifically to avoid duplicates
-            if "info_types" in dynamic_inspect_config:
-                if "info_types" not in request_inspect_config:
-                    request_inspect_config["info_types"] = []
-                
-                existing_info_type_names = {it["name"] for it in request_inspect_config["info_types"]}
-                for new_info_type in dynamic_inspect_config["info_types"]:
-                    if new_info_type["name"] not in existing_info_type_names:
-                        request_inspect_config["info_types"].append(new_info_type)
-            
-            # Handle rule_set merging
-            if "rule_set" in dynamic_inspect_config:
-                if "rule_set" not in request_inspect_config:
-                    request_inspect_config["rule_set"] = []
-                request_inspect_config["rule_set"].extend(dynamic_inspect_config["rule_set"])
-
-            # Overwrite other top-level keys
-            for key, value in dynamic_inspect_config.items():
-                if key not in ["info_types", "rule_set"]:
-                    request_inspect_config[key] = value
-            
-            logger.info("Merged dynamic_inspect_config into request_inspect_config.")
-
-        if request_inspect_config:
-            request_body["inspect_config"] = request_inspect_config
-
+        # Configure de-identification: Prioritize template or use default inline config.
         if deidentify_template_name:
-            request_body["deidentify_template_name"] = deidentify_template_name
+            request["deidentify_template_name"] = deidentify_template_name
+            logger.info(f"Using deidentify_template_name: {deidentify_template_name}")
         else:
-            # Fallback to default deidentify_config if no template is provided
-            request_body["deidentify_config"] = DLP_CONFIG.get("deidentify_config", {
-                "info_type_transformations": {
-                    "transformations": [
-                        {
-                            "primitive_transformation": {
-                                "replace_with_info_type_config": {}
-                            }
-                        }
-                    ]
-                }
-            })
+            request["deidentify_config"] = default_deidentify_config
+            logger.info("Using inline deidentify_config (no template name provided).")
 
-        response = dlp_client.deidentify_content(request=request_body)
+        response = dlp_client.deidentify_content(request=request)
         
         redacted_value = response.item.value
         logger.info(f"DLP De-identification successful. Redacted_transcript_preview: {redacted_value[:100]}")
         return redacted_value
+
     except NotFound as e:
-        logger.error(f"DLP API Error: Requested inspect/deidentify template not found. Please ensure the templates '{inspect_template_name}' and '{deidentify_template_name}' exist in project '{current_gcp_project_id}' and are accessible. Error: {str(e)}")
-        return f"[DLP_TEMPLATE_NOT_FOUND_ERROR] {transcript}"
+        logger.warning(f"DLP API Error: Requested inspect/deidentify template not found ({inspect_template_name}, {deidentify_template_name}). Falling back to inline configuration. Error: {str(e)}")
+        
+        # Fallback attempt: retry without templates, forcing inline config
+        try:
+            fallback_request = {
+                "parent": parent,
+                "item": item,
+                "inspect_config": final_inline_inspect_config, # Always use the prepared inline config for fallback
+                "deidentify_config": default_deidentify_config # Always use the prepared inline config for fallback
+            }
+            logger.info("Attempting DLP with inline inspect_config and deidentify_config (fallback).")
+            response = dlp_client.deidentify_content(request=fallback_request)
+            redacted_value = response.item.value
+            logger.info(f"DLP De-identification successful (fallback). Redacted_transcript_preview: {redacted_value[:100]}")
+            return redacted_value
+        except Exception as fallback_e:
+            logger.error(f"An unexpected error occurred during DLP API fallback call: {str(fallback_e)}")
+            return f"[DLP_FALLBACK_PROCESSING_ERROR] {transcript}"
+
+    except PermissionDenied as e:
+        logger.error(f"DLP API Error: Permission denied for project '{current_gcp_project_id}'. Ensure the service account has 'DLP User' role. Error: {str(e)}")
+        return f"[DLP_PERMISSION_DENIED_ERROR] {transcript}"
+
     except Exception as e:
         logger.error(f"An unexpected error occurred during DLP API call: {str(e)}")
-        # Fallback: return original transcript or a transcript with a generic error message
         return f"[DLP_PROCESSING_ERROR] {transcript}"
 
 if __name__ == "__main__":
