@@ -8,10 +8,34 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(levelname)s %(name)s %(module)s %(funcName)s %(lineno)d : %(message)s')
 logger = logging.getLogger(__name__)
 
+def get_gcp_project_id():
+    """Gets the current GCP project ID from the gcloud configuration."""
+    try:
+        command = ['gcloud', 'config', 'get-value', 'project']
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            check=True,
+            shell=True  # Use shell=True for consistency and Windows compatibility
+        )
+        project_id = result.stdout.strip()
+        if not project_id:
+            raise ValueError("gcloud config returned an empty project ID. Please run 'gcloud config set project YOUR_PROJECT_ID'.")
+        logger.info(f"Successfully retrieved GCP Project ID via gcloud: {project_id}")
+        return project_id
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        logger.error(
+            "Failed to get GCP Project ID using 'gcloud config get-value project'. "
+            "Please ensure the gcloud CLI is installed, you are authenticated ('gcloud auth login'), "
+            "and a default project is set ('gcloud config set project YOUR_PROJECT_ID')."
+        )
+        if isinstance(e, subprocess.CalledProcessError):
+            logger.error(f"gcloud stderr: {e.stderr}")
+        raise SystemExit("Could not determine GCP Project ID. Aborting test.") from e
+
 # GCP Project ID and Pub/Sub Topic for raw transcripts
-GCP_PROJECT_ID = os.environ.get("PROJECT_ID")
-if not GCP_PROJECT_ID:
-    raise ValueError("PROJECT_ID environment variable not set. Please set it before running the tests.")
+GCP_PROJECT_ID = get_gcp_project_id()
 RAW_TRANSCRIPTS_TOPIC = 'raw-transcripts'
 AA_LIFECYCLE_TOPIC = 'aa-lifecycle-event-notification'
 
