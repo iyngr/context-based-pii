@@ -13,7 +13,7 @@ steps:
     - '--runtime'
     - 'python312'
     - '--region'
-    - 'us'
+    - 'us-central1'
     - '--service-account'
     - '${_SERVICE_ACCOUNT}'
     - '--set-env-vars'
