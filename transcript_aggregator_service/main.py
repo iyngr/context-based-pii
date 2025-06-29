@@ -336,15 +336,15 @@ def receive_conversation_ended_event():
                 # Construct the final JSON payload with the correct structure for the Conversation resource.
                 logger.info(f"Preparing GCS payload with {len(entries_for_gcs)} entries.", extra={"json_fields": {"event": "gcs_payload_prep", "conversation_id": conversation_id, "entries_count": len(entries_for_gcs)}})
                 
-                cleaned_entries = []
+                # Construct the final JSONL payload for GCS.
+                # Each line must be a complete JSON object representing a single conversation entry.
+                json_payload_for_gcs_lines = []
                 for entry in entries_for_gcs:
                     entry_copy = dict(entry)
-                    entry_copy.pop('conversation_id', None)
-                    cleaned_entries.append(entry_copy)
-                json_payload_for_gcs_dict = {
-                    "entries": cleaned_entries
-                }
-                json_payload_for_gcs = json.dumps(json_payload_for_gcs_dict, indent=2)
+                    entry_copy.pop('conversation_id', None) # Ensure conversation_id is not in the entry
+                    json_payload_for_gcs_lines.append(json.dumps(entry_copy))
+                
+                json_payload_for_gcs = "\n".join(json_payload_for_gcs_lines)
                 
                 logger.info(f"Finished GCS JSON payload preparation. Length: {len(json_payload_for_gcs)} bytes.", extra={"json_fields": {"event": "gcs_prep_json_payload_done", "conversation_id": conversation_id, "payload_length": len(json_payload_for_gcs)}})
 

@@ -112,10 +112,10 @@ def run_e2e_test(conversation_filename):
             ]
             logger.info(f"Publishing utterance {i+1}/{total_utterance_count} for '{conversation_id}'...")
             subprocess.run(publish_raw_command, capture_output=True, text=True, check=True, shell=True)
-            time.sleep(0.1) # Small delay to simulate real-time gaps
+            time.sleep(0.01) # Reduced delay to speed up test
 
         logger.info(f"Finished publishing all individual utterances for {conversation_id}.")
-        time.sleep(15) # Longer delay to allow asynchronous processing to catch up before 'ended' event
+        time.sleep(5) # Reduced delay to speed up test
 
         # 3. Send 'conversation_ended' message with total_utterance_count
         end_message_payload = json.dumps({
