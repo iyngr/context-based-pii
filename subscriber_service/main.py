@@ -161,108 +161,112 @@ def process_transcript_event():
             logger.error(f"--- DEBUG EARLY --- 'data' key missing in event or event is not a dict. Event: {pubsub_message}")
             return "Bad Request", 400
 
-        # Extract conversation_id from the nested 'conversation_info' object
-        conversation_info = message_payload.get('conversation_info', {})
-        conversation_id = conversation_info.get('conversation_id')
+        # Extract fields directly from the message_payload (individual utterance)
+        conversation_id = message_payload.get('conversation_id')
+        original_entry_index = message_payload.get('original_entry_index')
+        participant_role_raw = message_payload.get('participant_role')
+        transcript = message_payload.get('text')
+        user_id = message_payload.get('user_id')
+        start_timestamp_usec = message_payload.get('start_timestamp_usec')
 
-        if not conversation_id:
-            logger.error("Missing 'conversation_id' within 'conversation_info' in the message payload. Aborting.")
+        # Validate required fields for an individual utterance
+        required_fields = {
+            'conversation_id': conversation_id,
+            'original_entry_index': original_entry_index,
+            'participant_role': participant_role_raw,
+            'text': transcript,
+            'start_timestamp_usec': start_timestamp_usec
+        }
+
+        missing_fields = [field for field, value in required_fields.items() if value is None or (isinstance(value, str) and not value.strip())]
+        if missing_fields:
+            logger.error(f"Missing required fields in individual utterance payload: {', '.join(missing_fields)}. Aborting.", extra={"json_fields": {"event": "missing_fields_error", "missing_fields": missing_fields, "payload": message_payload}})
             return "Bad Request", 400
 
-        entries = message_payload.get('entries', [])
-        if not entries:
-            logger.warning("No 'entries' found. Nothing to process.")
-            return "OK", 200
+        participant_role = participant_role_raw.upper() if participant_role_raw else ''
+        if not participant_role:
+            logger.error(f"Participant role is empty after processing. Aborting.", extra={"json_fields": {"event": "empty_participant_role", "payload": message_payload}})
+            return "Bad Request", 400
 
         headers = {'Content-Type': 'application/json'}
+        service_payload = {
+            "conversation_id": conversation_id,
+            "transcript": transcript
+        }
 
-        for entry_index, entry in enumerate(entries):
-            transcript = entry.get('text')
-            participant_role_raw = entry.get('role')
-            participant_role = participant_role_raw.upper() if participant_role_raw else ''
+        try:
+            if participant_role == 'AGENT':
+                endpoint = f"{CONTEXT_MANAGER_URL}/handle-agent-utterance"
+                response = requests.post(endpoint, json=service_payload, headers=headers, timeout=10)
+                response.raise_for_status()
+                logger.info(f"Agent utterance (entry {original_entry_index}) processed. Response: {response.text}")
 
-            if not transcript or not participant_role:
-                logger.error(f"Missing 'text' (transcript) or 'role' in entry {entry_index + 1}. Skipping.")
-                continue
+                # After processing, publish the original agent utterance.
+                # Agent utterances are not redacted, so we use the original transcript.
+                if publisher and REDACTED_TOPIC_NAME:
+                    full_redacted_topic_path = get_full_topic_path(REDACTED_TOPIC_NAME, SUBSCRIBER_GCP_PROJECT_ID)
 
-            service_payload = {
-                "conversation_id": conversation_id,
-                "transcript": transcript
-            }
+                    publish_payload = {
+                        "conversation_id": conversation_id,
+                        "original_entry_index": original_entry_index,
+                        "text": transcript, # Use original transcript for agent
+                        "participant_role": participant_role,
+                        "user_id": user_id,
+                        "start_timestamp_usec": start_timestamp_usec
+                    }
+                    message_bytes = json.dumps(publish_payload).encode('utf-8')
+                    
+                    try:
+                        publish_future = publisher.publish(full_redacted_topic_path, data=message_bytes)
+                        publish_future.result(timeout=10)
+                        logger.info(f"Published AGENT transcript for entry {original_entry_index} to topic: {full_redacted_topic_path}.")
+                    except Exception as pub_e:
+                        logger.error(f"Error publishing AGENT transcript for entry {original_entry_index}. Error: {str(pub_e)}")
 
-            try:
-                if participant_role == 'AGENT':
-                    endpoint = f"{CONTEXT_MANAGER_URL}/handle-agent-utterance"
-                    response = requests.post(endpoint, json=service_payload, headers=headers, timeout=10)
-                    response.raise_for_status()
-                    logger.info(f"Agent utterance (entry {entry_index + 1}) processed. Response: {response.text}")
+            elif participant_role == 'END_USER' or participant_role == 'CUSTOMER':
+                endpoint = f"{CONTEXT_MANAGER_URL}/handle-customer-utterance"
+                response = requests.post(endpoint, json=service_payload, headers=headers, timeout=10)
+                response.raise_for_status()
+                
+                response_data = response.json()
+                logger.info(f"Customer utterance (entry {original_entry_index}) processed. Response data: {response_data}")
 
-                    # After processing, publish the original agent utterance.
-                    # Agent utterances are not redacted, so we use the original transcript.
+                redacted_transcript = response_data.get('redacted_transcript')
+                if redacted_transcript is not None:
                     if publisher and REDACTED_TOPIC_NAME:
                         full_redacted_topic_path = get_full_topic_path(REDACTED_TOPIC_NAME, SUBSCRIBER_GCP_PROJECT_ID)
 
                         publish_payload = {
                             "conversation_id": conversation_id,
-                            "original_entry_index": entry_index,
-                            "text": transcript, # Use original transcript for agent
+                            "original_entry_index": original_entry_index,
+                            "text": redacted_transcript,
                             "participant_role": participant_role,
-                            "user_id": entry.get('user_id'),
-                            "start_timestamp_usec": entry.get('start_timestamp_usec', 0)
+                            "user_id": user_id,
+                            "start_timestamp_usec": start_timestamp_usec
                         }
                         message_bytes = json.dumps(publish_payload).encode('utf-8')
                         
                         try:
                             publish_future = publisher.publish(full_redacted_topic_path, data=message_bytes)
                             publish_future.result(timeout=10)
-                            logger.info(f"Published AGENT transcript for entry {entry_index + 1} to topic: {full_redacted_topic_path}.")
+                            logger.info(f"Published redacted transcript for entry {original_entry_index} to topic: {full_redacted_topic_path}.")
                         except Exception as pub_e:
-                            logger.error(f"Error publishing AGENT transcript for entry {entry_index + 1}. Error: {str(pub_e)}")
-
-                elif participant_role == 'END_USER' or participant_role == 'CUSTOMER':
-                    endpoint = f"{CONTEXT_MANAGER_URL}/handle-customer-utterance"
-                    response = requests.post(endpoint, json=service_payload, headers=headers, timeout=10)
-                    response.raise_for_status()
-                    
-                    response_data = response.json()
-                    logger.info(f"Customer utterance (entry {entry_index + 1}) processed. Response data: {response_data}")
-
-                    redacted_transcript = response_data.get('redacted_transcript')
-                    if redacted_transcript is not None:
-                        if publisher and REDACTED_TOPIC_NAME:
-                            full_redacted_topic_path = get_full_topic_path(REDACTED_TOPIC_NAME, SUBSCRIBER_GCP_PROJECT_ID)
-
-                            publish_payload = {
-                                "conversation_id": conversation_id,
-                                "original_entry_index": entry_index,
-                                "text": redacted_transcript,
-                                "participant_role": participant_role,
-                                "user_id": entry.get('user_id'),
-                                "start_timestamp_usec": entry.get('start_timestamp_usec', 0)
-                            }
-                            message_bytes = json.dumps(publish_payload).encode('utf-8')
-                            
-                            try:
-                                publish_future = publisher.publish(full_redacted_topic_path, data=message_bytes)
-                                publish_future.result(timeout=10)
-                                logger.info(f"Published redacted transcript for entry {entry_index + 1} to topic: {full_redacted_topic_path}.")
-                            except Exception as pub_e:
-                                logger.error(f"Error publishing for entry {entry_index + 1}. Error: {str(pub_e)}")
-                        else:
-                            logger.warning(f"Publisher not init or topic name missing for entry {entry_index + 1}.")
+                            logger.error(f"Error publishing for entry {original_entry_index}. Error: {str(pub_e)}")
                     else:
-                        logger.info(f"No redacted_transcript in response for entry {entry_index + 1}.")
+                        logger.warning(f"Publisher not init or topic name missing for entry {original_entry_index}.")
                 else:
-                    logger.warning(f"Unknown participant_role: '{participant_role}' in entry {entry_index + 1}. Skipping.")
+                    logger.info(f"No redacted_transcript in response for entry {original_entry_index}.")
+            else:
+                logger.warning(f"Unknown participant_role: '{participant_role}' in entry {original_entry_index}. Skipping.")
 
-            except requests.exceptions.HTTPError as http_err:
-                logger.error(f"HTTP error for entry {entry_index + 1}: {str(http_err)}, response: {http_err.response.text if http_err.response else 'No response text'}")
-            except requests.exceptions.RequestException as req_err:
-                logger.error(f"Request error for entry {entry_index + 1}: {str(req_err)}")
-            except json.JSONDecodeError as json_err_resp:
-                 logger.error(f"Error decoding JSON response from Context Manager for entry {entry_index + 1}: {str(json_err_resp)}")
+        except requests.exceptions.HTTPError as http_err:
+            logger.error(f"HTTP error for entry {original_entry_index}: {str(http_err)}, response: {http_err.response.text if http_err.response else 'No response text'}")
+        except requests.exceptions.RequestException as req_err:
+            logger.error(f"Request error for entry {original_entry_index}: {str(req_err)}")
+        except json.JSONDecodeError as json_err_resp:
+             logger.error(f"Error decoding JSON response from Context Manager for entry {original_entry_index}: {str(json_err_resp)}")
 
-        logger.info("All entries processed ---")
+        logger.info(f"Entry {original_entry_index} processed successfully for conversation {conversation_id} ---")
         return "OK", 200
 
     except json.JSONDecodeError as json_err_msg:
