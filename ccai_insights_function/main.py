@@ -45,7 +45,7 @@ def main(event, context):
                 role=contact_center_insights_v1.types.ConversationParticipant.Role.END_USER
             ),
             contact_center_insights_v1.types.ConversationParticipant(
-                role=contact_center_insights_v1.types.ConversationParticipant.Role.AGENT
+                role=contact_center_insights_v1.types.ConversationParticipant.Role.HUMAN_AGENT
             ),
         ]
 
