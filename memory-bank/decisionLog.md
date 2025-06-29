@@ -237,3 +237,7 @@ The problem was multi-faceted:
     *   Modified `main_service/main.py` at lines 319-349 to:
         *   Add the `expected_pii_type` to `final_inline_inspect_config["custom_info_types"]` if it's a custom type, and skip adding a `rule_set` for it.
         *   Add the `expected_pii_type` to `final_inline_inspect_config["info_types"]` if it's a built-in type, and then add a `rule_set` with `info_types: [{"name": expected_type}]` to boost its likelihood.
+[2025-06-22 20:41:00] - **Decision:** Resolved "Invalid built-in info type name" error for custom info types in `main_service/main.py`.
+**Rationale:** The logic to find custom info type definitions was flawed. It was looking for the `custom_info_types` key at the top level of the `DLP_CONFIG` dictionary, when it is actually nested inside the `inspect_config` key. This caused the code to misidentify custom info types as built-in types, leading to an invalid DLP API request when trying to apply a likelihood-boosting rule.
+**Implementation Details:**
+    *   Modified `main_service/main.py` at line 316 to correctly look for the `custom_info_types` list within `DLP_CONFIG.get("inspect_config", {}).get("custom_info_types", [])`. This ensures custom info types are correctly identified and the likelihood-boosting `rule_set` is not applied to them.

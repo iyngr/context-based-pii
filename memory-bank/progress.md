@@ -19,6 +19,7 @@ This file tracks the project's progress using a task list format.
 *   Enhanced DLP template handling and error reporting in `main_service`.
 *   Refactored `call_dlp_for_redaction` to use `GOOGLE_CLOUD_PROJECT` environment variable.
 *   Resolved "project_id is not defined" errors in `main_service/main.py`.
+*   Resolved "Invalid built-in info type name" error for custom info types in `main_service/main.py`.
 
 ## Current Tasks
 
