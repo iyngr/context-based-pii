@@ -1,6 +1,5 @@
 Flask
 google-cloud-firestore
-google-cloud-contact-center-insights
 tenacity
 google-cloud-pubsub
 gunicorn

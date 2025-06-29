@@ -293,12 +293,7 @@ def receive_conversation_ended_event():
         full_transcript = " ".join(full_transcript_parts).strip()
         logger.info(f"Conversation aggregation: Aggregated transcript for {conversation_id}", extra={"json_fields": {"event": "conversation_aggregation", "conversation_id": conversation_id, "transcript_length": len(full_transcript)}})
 
-        # 2. Integrate with Google CCAI Conversation Insights (UploadConversation API)
-        @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10),
-               retry=retry_if_exception_type((InternalServerError, ServiceUnavailable, DeadlineExceeded)))
-        def _upload_conversation_with_retry(client, request_obj):
-            return client.upload_conversation(request=request_obj)
-
+        # 2. Upload Aggregated Transcript to GCS
         @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10),
                retry=retry_if_exception_type((InternalServerError, ServiceUnavailable, DeadlineExceeded)))
         def _firestore_delete_collection_docs_with_retry(collection_ref):
@@ -320,31 +315,12 @@ def receive_conversation_ended_event():
                 logger.error("AGGREGATED_TRANSCRIPTS_BUCKET environment variable not set.", extra={"json_fields": {"event": "configuration_error", "variable": "AGGREGATED_TRANSCRIPTS_BUCKET"}})
                 return jsonify({'error': 'AGGREGATED_TRANSCRIPTS_BUCKET environment variable not set'}), 500
 
-
-            try:
-                # Use the regional endpoint that matches your DLP location
-                client_options = {"api_endpoint": "us-central1-contactcenterinsights.googleapis.com"}
-                conversations_client = contact_center_insights_v1.ContactCenterInsightsClient(client_options=client_options)
-                logger.info("CCAI Client initialized with regional endpoint us-central1")
-            except Exception as e:
-                logger.error(f"Failed to initialize CCAI Client: {e}")
-                return jsonify({'error': f'Failed to initialize CCAI Client: {e}'}), 500
-
-            # Use us-central1 for the parent (not global)
-            parent = f"projects/{project_id}/locations/us-central1"
-
             try:
                 logger.info("Starting GCS JSON preparation.", extra={"json_fields": {"event": "gcs_prep_start", "conversation_id": conversation_id}})
 
-
-                # Construct the final JSON payload with the correct structure.
                 # Construct the final JSON payload with the correct structure for the Conversation resource.
                 logger.info(f"Preparing GCS payload with {len(entries_for_gcs)} entries.", extra={"json_fields": {"event": "gcs_payload_prep", "conversation_id": conversation_id, "entries_count": len(entries_for_gcs)}})
-                json_payload_for_gcs_dict = {
-                    "entries": entries_for_gcs  # Your list of conversation entry dictionaries
-                }
-
-                # Remove conversation_info and conversation_id from entries if present
+                
                 cleaned_entries = []
                 for entry in entries_for_gcs:
                     entry_copy = dict(entry)
@@ -355,76 +331,29 @@ def receive_conversation_ended_event():
                 }
                 json_payload_for_gcs = json.dumps(json_payload_for_gcs_dict, indent=2)
                 
-                logger.info(f"Finished GCS JSON payload preparation for JsonConversationInput. Length: {len(json_payload_for_gcs)} bytes.", extra={"json_fields": {"event": "gcs_prep_json_payload_done", "conversation_id": conversation_id, "payload_length": len(json_payload_for_gcs)}})
+                logger.info(f"Finished GCS JSON payload preparation. Length: {len(json_payload_for_gcs)} bytes.", extra={"json_fields": {"event": "gcs_prep_json_payload_done", "conversation_id": conversation_id, "payload_length": len(json_payload_for_gcs)}})
 
                 gcs_transcript_filename = f"{conversation_id}_transcript.json"
                 logger.info(f"GCS transcript filename set to: {gcs_transcript_filename}", extra={"json_fields": {"event": "gcs_prep_filename", "conversation_id": conversation_id, "gcs_filename": gcs_transcript_filename}})
 
                 bucket = storage_client.bucket(AGGREGATED_TRANSCRIPTS_BUCKET)
-                logger.info(f"GCS bucket object obtained for bucket: {AGGREGATED_TRANSCRIPTS_BUCKET}", extra={"json_fields": {"event": "gcs_prep_bucket_obj", "conversation_id": conversation_id, "bucket_name": AGGREGATED_TRANSCRIPTS_BUCKET}})
-
                 blob = bucket.blob(gcs_transcript_filename)
-                logger.info(f"GCS blob object obtained for blob: {gcs_transcript_filename}", extra={"json_fields": {"event": "gcs_prep_blob_obj", "conversation_id": conversation_id, "blob_name": gcs_transcript_filename}})
-
                 blob.upload_from_string(json_payload_for_gcs, content_type='application/json')
                 gcs_transcript_uri = f"gs://{AGGREGATED_TRANSCRIPTS_BUCKET}/{gcs_transcript_filename}"
                 logger.info(f"Uploaded aggregated transcript to GCS: {gcs_transcript_uri}", extra={"json_fields": {"event": "gcs_upload_success", "conversation_id": conversation_id, "gcs_uri": gcs_transcript_uri}})
 
-                # Construct the Conversation object for the API call.
-                # This object references the transcript in GCS via the data_source field.
-                conversation_for_api_call = contact_center_insights_v1.types.Conversation(
-                    data_source=contact_center_insights_v1.types.ConversationDataSource(
-                        gcs_source=contact_center_insights_v1.types.GcsSource(transcript_uri=gcs_transcript_uri)
-                    ),
-                    # language_code is expected to be part of the GCS JSON for JsonConversationInput
-                )
-
-                # Construct the request object for upload_conversation
-                # SpeechConfig is not needed when providing a transcript via GCS.
-                # By providing an empty RedactionConfig, we disable the default redaction
-                # that is implicitly and incorrectly triggered by the service.
-
-                # Configure DLP-compatible redaction config with the correct location
-                redaction_config = contact_center_insights_v1.types.RedactionConfig(
-                    # Set the DLP configuration to use the same region as your resources
-                    deidentify_template=f"projects/{project_id}/locations/us-central1/deidentifyTemplates/deidentify",
-                    inspect_template=f"projects/{project_id}/locations/us-central1/inspectTemplates/identify"
-                )
-
-                upload_request = contact_center_insights_v1.types.UploadConversationRequest(
-                    parent=parent,
-                    conversation=conversation_for_api_call,
-                    conversation_id=conversation_id,
-                    redaction_config=redaction_config
-                )
-
-                try:
-                    # Upload the conversation
-                    response = _upload_conversation_with_retry(conversations_client, upload_request)
-                    # Get the actual Conversation object from the operation result, with a 180-second timeout.
-                    ccai_conversation = response.result(timeout=180)
-                    logger.info(f"CCAI API: Conversation uploaded to CCAI: {ccai_conversation.name}", extra={"json_fields": {"event": "ccai_api_call", "conversation_id": conversation_id, "ccai_conversation_name": ccai_conversation.name}})
-                except AlreadyExists:
-                    logger.warning(f"CCAI API: Conversation with ID '{conversation_id}' already exists. Skipping upload.", extra={"json_fields": {"event": "ccai_upload_skipped_already_exists", "conversation_id": conversation_id}})
-                except GoogleAPICallError as e:
-                    # Handle the specific LRO state error to provide better logging, then re-raise
-                    logger.error(f"GoogleAPICallError waiting for conversation upload LRO for conversation ID: {conversation_id}. Error: {e}", exc_info=True, extra={"json_fields": {"event": "ccai_upload_lro_error", "conversation_id": conversation_id, "error_details": str(e)}})
-                    raise e
-
                 # After successful upload, delete from Firestore
-                # Delete utterances sub-collection
                 _firestore_delete_collection_docs_with_retry(utterances_ref)
-                # Delete conversation document
                 _firestore_delete_document_with_retry(db.collection('conversations_in_progress').document(conversation_id))
                 logger.info(f"Firestore: Deleted conversation {conversation_id} and its utterances from Firestore.", extra={"json_fields": {"event": "firestore_delete", "conversation_id": conversation_id}})
 
             except Exception as e:
-                logger.error(f"Error during CCAI upload or Firestore deletion. Exception: {e}, Type: {type(e)}, Repr: {repr(e)}", exc_info=True, extra={"json_fields": {"event": "ccai_upload_or_firestore_delete_error", "conversation_id": conversation_id, "error_message": str(e), "error_type": str(type(e)), "error_repr": repr(e)}})
-                return jsonify({'error': f'Failed to process conversation for insights: {e}'}), 500
+                logger.error(f"Error during GCS upload or Firestore deletion. Exception: {e}", exc_info=True, extra={"json_fields": {"event": "gcs_upload_or_firestore_delete_error", "conversation_id": conversation_id, "error_message": str(e)}})
+                return jsonify({'error': f'Failed to process and upload transcript: {e}'}), 500
         else:
-            logger.warning(f"No transcript found for conversation ID: {conversation_id}. Skipping CCAI upload.", extra={"json_fields": {"event": "ccai_upload_skipped", "conversation_id": conversation_id, "reason": "no_transcript"}})
+            logger.warning(f"No transcript found for conversation ID: {conversation_id}. Skipping GCS upload.", extra={"json_fields": {"event": "gcs_upload_skipped", "conversation_id": conversation_id, "reason": "no_transcript"}})
 
-        return jsonify({'status': 'success', 'message': 'Conversation ended event processed and transcript uploaded to CCAI'}), 200
+        return jsonify({'status': 'success', 'message': 'Conversation ended event processed and transcript uploaded to GCS'}), 200
     except Exception as e:
         logger.error(f"Unhandled exception in /conversation-ended. Exception: {e}, Type: {type(e)}, Repr: {repr(e)}", exc_info=True, extra={"json_fields": {"event": "unhandled_exception", "error_message": str(e), "error_type": str(type(e)), "error_repr": repr(e)}})
         return jsonify({'error': f'An unexpected error occurred: {e}'}), 500
