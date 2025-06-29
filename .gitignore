@@ -19,3 +19,4 @@ test_output/
 logs.txt
 test.py
 dlp_redaction_test.py
+.gemini/extensions/gemini-extension.json
