@@ -37,23 +37,10 @@ def main(event, context):
 
         parent = f"projects/{project_id}/locations/{location}"
 
-        # Define participants explicitly. The API can infer this, but being explicit
-        # is more robust and can prevent backend processing errors.
-        # The roles must match those used in the transcript entries.
-        participants = [
-            contact_center_insights_v1.types.ConversationParticipant(
-                role=contact_center_insights_v1.types.ConversationParticipant.Role.END_USER
-            ),
-            contact_center_insights_v1.types.ConversationParticipant(
-                role=contact_center_insights_v1.types.ConversationParticipant.Role.HUMAN_AGENT
-            ),
-        ]
-
         conversation = contact_center_insights_v1.types.Conversation(
             data_source=contact_center_insights_v1.types.ConversationDataSource(
                 gcs_source=contact_center_insights_v1.types.GcsSource(transcript_uri=gcs_uri)
-            ),
-            participants=participants,
+            )
         )
 
         redaction_config = contact_center_insights_v1.types.RedactionConfig(
