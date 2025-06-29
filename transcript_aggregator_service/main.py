@@ -336,17 +336,13 @@ def receive_conversation_ended_event():
                 # Construct the final JSON payload with the correct structure for the Conversation resource.
                 logger.info(f"Preparing GCS payload with {len(entries_for_gcs)} entries.", extra={"json_fields": {"event": "gcs_payload_prep", "conversation_id": conversation_id, "entries_count": len(entries_for_gcs)}})
                 
-                # Construct the final JSONL payload for GCS.
-                # Each line must be a complete JSON object representing a single conversation entry.
-                json_payload_for_gcs_lines = []
-                for entry in entries_for_gcs:
-                    entry_copy = dict(entry)
-                    entry_copy.pop('conversation_id', None) # Ensure conversation_id is not in the entry
-                    json_payload_for_gcs_lines.append(json.dumps(entry_copy))
+                # Construct the final JSON payload for GCS.
+                # The file must be a single JSON object with a top-level "entries" key,
+                # which contains an array of ConversationEntry objects.
+                gcs_payload_dict = {"entries": entries_for_gcs}
+                json_payload_for_gcs = json.dumps(gcs_payload_dict, indent=2)
                 
-                json_payload_for_gcs = "\n".join(json_payload_for_gcs_lines)
-                
-                logger.info(f"Finished GCS JSON payload preparation. Length: {len(json_payload_for_gcs)} bytes.", extra={"json_fields": {"event": "gcs_prep_json_payload_done", "conversation_id": conversation_id, "payload_length": len(json_payload_for_gcs)}})
+                logger.info(f"Finished GCS JSON payload preparation. Length: {len(json_payload_for_gcs)} bytes.", extra={"json_fields": {"event": "gcs_prep_json_payload_done", "conversation_id": conversation_id, "payload_length": len(json_payload_for_gcs), "format": "single_json_object"}})
 
                 gcs_transcript_filename = f"{conversation_id}_transcript.json"
                 logger.info(f"GCS transcript filename set to: {gcs_transcript_filename}", extra={"json_fields": {"event": "gcs_prep_filename", "conversation_id": conversation_id, "gcs_filename": gcs_transcript_filename}})
