@@ -3,6 +3,7 @@ import json
 import logging
 from google.cloud import contact_center_insights_v1
 from google.api_core.exceptions import AlreadyExists, GoogleAPICallError
+import time # Ensure time is imported for polling delays
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -54,16 +55,41 @@ def main(event, context):
         )
 
         upload_operation = insights_client.upload_conversation(request=request)
-        logger.info(f"Upload operation started for {gcs_uri}, operation: {upload_operation.operation.name}")
+        operation_name = upload_operation.operation.name
+        logger.info(f"Upload operation started for {gcs_uri}, operation: {operation_name}")
         
-        # The result() call will block until the operation is complete.
-        # For Cloud Functions, this is acceptable for many use cases.
-        # For longer operations, consider a more complex asynchronous pattern.
-        response = upload_operation.result(timeout=540) # 9 minute timeout
-        logger.info(f"Successfully uploaded conversation: {response.name}")
+        # Poll the LRO status using insights_client.transport.operations_client
+        max_poll_time_seconds = 900 # 15 minutes, adjust as needed based on expected LRO duration
+        poll_interval_seconds = 10 # Poll every 10 seconds
+        start_time = time.time()
 
-    except AlreadyExists:
-        logger.warning(f"Conversation with ID '{conversation_id}' already exists. Skipping upload.")
+        while True:
+            operation = insights_client.transport.operations_client.get_operation(name=operation_name)
+            if operation.done:
+                break
+            
+            if time.time() - start_time > max_poll_time_seconds:
+                logger.error(f"LRO polling timed out after {max_poll_time_seconds} seconds for operation: {operation_name}", extra={"json_fields": {"event": "lro_polling_timeout", "operation_name": operation_name}})
+                raise GoogleAPICallError(f"LRO polling timed out for operation: {operation_name}")
+            
+            time.sleep(poll_interval_seconds)
+            logger.info(f"Polling LRO {operation_name}. Not yet done. Retrying in {poll_interval_seconds} seconds.")
+
+        if operation.error:
+            # Handle LRO error
+            if operation.error.code == 6: # ALREADY_EXISTS (code 6)
+                logger.warning(f"Conversation with ID '{conversation_id}' already exists. Skipping upload. Operation: {operation_name}")
+            else:
+                logger.error(f"LRO failed for operation: {operation_name}. Error: {operation.error.message}", exc_info=True, extra={"json_fields": {"event": "lro_failed", "operation_name": operation_name, "error_code": operation.error.code, "error_message": operation.error.message}})
+                raise GoogleAPICallError(f"LRO failed: {operation.error.message}")
+        else:
+            # If operation is done and no error, it must have a response
+            # Deserialize the response to a Conversation object
+            response = contact_center_insights_v1.types.Conversation.deserialize(operation.response.value)
+            logger.info(f"Successfully uploaded conversation: {response.name}", extra={"json_fields": {"event": "ccai_upload_success", "conversation_id": conversation_id, "ccai_conversation_name": response.name}})
+
+    except AlreadyExists: # This catch is for the initial upload_conversation call, if it immediately returns AlreadyExists
+        logger.warning(f"Conversation with ID '{conversation_id}' already exists. Skipping upload (initial check).")
     except GoogleAPICallError as e:
         logger.error(f"GoogleAPICallError during conversation upload for conversation ID: {conversation_id}. Error: {e}", exc_info=True)
     except Exception as e:
