@@ -2,6 +2,7 @@ import json
 import logging
 import subprocess
 import os
+import time
 
 # Configure logging for the test script
 logging.basicConfig(level=logging.INFO,
@@ -86,23 +87,42 @@ def run_e2e_test(conversation_filename):
         subprocess.run(start_command, capture_output=True, text=True, check=True, shell=True)
         logger.info(f"Published 'conversation_started' for {conversation_id}.")
 
-        # 2. Publish raw transcript messages from 'entries'
-        # No longer add or require 'conversation_info'
-        message_payload = json.dumps(conversation_data)
-        publish_raw_command = [
-            'gcloud', 'pubsub', 'topics', 'publish', RAW_TRANSCRIPTS_TOPIC,
-            '--project', GCP_PROJECT_ID,
-            '--message', message_payload
-        ]
-        logger.info(f"Publishing entire conversation data for '{conversation_id}' to Pub/Sub topic '{RAW_TRANSCRIPTS_TOPIC}'...")
-        subprocess.run(publish_raw_command, capture_output=True, text=True, check=True, shell=True)
-        logger.info(f"Published entire conversation data for {conversation_id}.")
+        # 2. Publish individual raw transcript messages from 'entries'
+        total_utterance_count = len(conversation_data.get('entries', []))
+        logger.info(f"Publishing {total_utterance_count} individual utterances for '{conversation_id}' to Pub/Sub topic '{RAW_TRANSCRIPTS_TOPIC}'...")
+        
+        for i, entry in enumerate(conversation_data.get('entries', [])):
+            # Ensure each entry has conversation_id, original_entry_index, participant_role, text, start_timestamp_usec
+            # The subscriber_service expects these fields.
+            # For simplicity in test, we'll ensure they are present or add placeholders.
+            entry_payload = {
+                "conversation_id": conversation_id,
+                "original_entry_index": entry.get('original_entry_index', i), # Use existing or generate
+                "participant_role": entry.get('role', 'UNKNOWN'), # Use 'role' from synthetic data
+                "text": entry.get('text', ''),
+                "user_id": entry.get('user_id', 'test_user'),
+                "start_timestamp_usec": entry.get('start_timestamp_usec', int(time.time() * 1_000_000)) # Use existing or generate
+            }
+            
+            message_payload = json.dumps(entry_payload)
+            publish_raw_command = [
+                'gcloud', 'pubsub', 'topics', 'publish', RAW_TRANSCRIPTS_TOPIC,
+                '--project', GCP_PROJECT_ID,
+                '--message', message_payload
+            ]
+            logger.info(f"Publishing utterance {i+1}/{total_utterance_count} for '{conversation_id}'...")
+            subprocess.run(publish_raw_command, capture_output=True, text=True, check=True, shell=True)
+            time.sleep(0.1) # Small delay to simulate real-time gaps
 
-        # 3. Send 'conversation_ended' message
+        logger.info(f"Finished publishing all individual utterances for {conversation_id}.")
+        time.sleep(15) # Longer delay to allow asynchronous processing to catch up before 'ended' event
+
+        # 3. Send 'conversation_ended' message with total_utterance_count
         end_message_payload = json.dumps({
             "conversation_id": conversation_id,
             "event_type": "conversation_ended",
-            "end_time": current_time # Using current_time as end_time for simplicity
+            "end_time": current_time, # Using current_time as end_time for simplicity
+            "total_utterance_count": total_utterance_count # Pass the total count for aggregator to wait for
         })
         end_command = [
             'gcloud', 'pubsub', 'topics', 'publish', AA_LIFECYCLE_TOPIC,

@@ -261,16 +261,32 @@ def receive_conversation_ended_event():
                 # Continue polling even if there's a temporary Firestore error
                 time.sleep(POLLING_INTERVAL_SECONDS)
 
-        if not transcript_ready:
-            logger.warning(f"Polling failed: No utterances found for conversation ID: {conversation_id} after {MAX_POLLING_ATTEMPTS} attempts. Skipping CCAI upload.", extra={"json_fields": {"event": "ccai_upload_skipped", "conversation_id": conversation_id, "reason": "polling_failed_no_utterances"}})
-            return jsonify({'status': 'skipped', 'message': 'No transcript found after polling, skipping CCAI upload'}), 200
+        # Introduce a fixed delay to allow all utterances to arrive and be written to Firestore
+        # This is crucial for production scenarios where total count is unknown and messages are asynchronous.
+        fixed_delay_seconds = int(os.getenv('AGGREGATION_DELAY_SECONDS', 15)) # Default to 15 seconds
+        logger.info(f"Introducing a fixed delay of {fixed_delay_seconds} seconds to allow all utterances to arrive for conversation ID: {conversation_id}", extra={"json_fields": {"event": "aggregation_delay", "conversation_id": conversation_id, "delay_seconds": fixed_delay_seconds}})
+        time.sleep(fixed_delay_seconds)
 
         # 1. Aggregate Full Transcript from Firestore
         try:
+            # Re-fetch the conversation document after the delay to get the most up-to-date utterance count
+            conversation_doc = _firestore_get_doc_with_retry(conversation_doc_ref)
+            if not conversation_doc.exists:
+                logger.warning(f"Conversation document not found after delay for ID: {conversation_id}. Skipping aggregation.", extra={"json_fields": {"event": "aggregation_skipped", "conversation_id": conversation_id, "reason": "doc_not_found_after_delay"}})
+                return jsonify({'status': 'skipped', 'message': 'Conversation document not found after delay, skipping aggregation'}), 200
+            
+            doc_data = conversation_doc.to_dict()
+            current_utterance_count = doc_data.get('utterance_count', 0)
+            logger.info(f"After delay, fetched conversation document for ID: {conversation_id} with utterance_count={current_utterance_count}", extra={"json_fields": {"event": "firestore_read_after_delay", "conversation_id": conversation_id, "utterance_count": current_utterance_count}})
+
+            if current_utterance_count == 0:
+                logger.warning(f"No utterances found for conversation ID: {conversation_id} after fixed delay. Skipping aggregation.", extra={"json_fields": {"event": "aggregation_skipped", "conversation_id": conversation_id, "reason": "no_utterances_after_delay"}})
+                return jsonify({'status': 'skipped', 'message': 'No utterances found after delay, skipping aggregation'}), 200
+
             utterances = _firestore_get_collection_with_retry(utterances_ref.order_by('original_entry_index'))
             logger.info(f"Firestore: Fetched {len(utterances)} utterances for conversation ID: {conversation_id}", extra={"json_fields": {"event": "firestore_read", "conversation_id": conversation_id, "utterance_count_fetched": len(utterances)}})
         except Exception as e:
-            logger.error(f"Firestore read operation failed for utterances: {e}", exc_info=True, extra={"json_fields": {"event": "firestore_error", "conversation_id": conversation_id, "error_details": str(e)}})
+            logger.error(f"Firestore read operation failed for utterances after delay: {e}", exc_info=True, extra={"json_fields": {"event": "firestore_error", "conversation_id": conversation_id, "error_details": str(e)}})
             return jsonify({'error': f'Firestore read operation failed: {e}'}), 500
 
         full_transcript_parts = []
