@@ -6,7 +6,6 @@ from flask import Flask, request, jsonify
 import os
 from datetime import datetime, timedelta, timezone
 from google.cloud import firestore, storage # Firestore is imported here
-from google.cloud import contact_center_insights_v1
 from google.protobuf.timestamp_pb2 import Timestamp as ProtoTimestamp # Alias the protobuf Timestamp
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from google.api_core.exceptions import InternalServerError, ServiceUnavailable, DeadlineExceeded, AlreadyExists, GoogleAPICallError
