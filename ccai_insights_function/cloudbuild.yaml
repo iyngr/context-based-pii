@@ -1,18 +1,11 @@
 steps:
-- name: 'gcr.io/cloud-builders/docker'
-  args: ['build', '-t', '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/ccai-insights-function:${SHORT_SHA}', '.']
-  dir: 'ccai_insights_function'
-
-- name: 'gcr.io/cloud-builders/docker'
-  args: ['push', '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/ccai-insights-function:${SHORT_SHA}']
-
 - name: 'gcr.io/cloud-builders/gcloud'
   args:
     - 'functions'
     - 'deploy'
     - 'ccai-insights-function'
     - '--gen2'
-    - '--source=${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/ccai-insights-function:${SHORT_SHA}'
+    - '--source=.'
     - '--trigger-bucket'
     - '${_TRIGGER_BUCKET}'
     - '--entry-point'
@@ -27,6 +20,7 @@ steps:
     - 'GOOGLE_CLOUD_PROJECT=${PROJECT_ID},LOCATION=us-central1'
     - '--min-instances=0'
     - '--max-instances=1'
+  dir: 'ccai_insights_function'
 
 substitutions:
   _GAR_LOCATION: 'us-central1'
