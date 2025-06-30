@@ -88,7 +88,7 @@ def main(event, context):
         logger.info(f"LRO {operation_name} is done. Full operation details: {operation}")
 
         # Check for errors or successful response.
-        if operation.error:
+        if operation.error and operation.error.code != 0:
             error_code = operation.error.code
             error_message = operation.error.message
 
@@ -99,7 +99,7 @@ def main(event, context):
                 # Exit gracefully without raising an exception.
                 return
 
-            # For all other errors, create a detailed message and raise an exception.
+            # For all other non-zero error codes, create a detailed message and raise an exception.
             if not error_message:
                 error_message = f"LRO failed with error code {error_code} and no message. Full details: {operation.error}"
             
@@ -110,7 +110,10 @@ def main(event, context):
             )
             raise GoogleAPICallError(error_message)
         else:
-            # If operation is done and no error, it must have a response
+            # If operation is done and has no error (or an error with code 0), check for a response.
+            if operation.error and operation.error.code == 0:
+                logger.warning(f"LRO for {operation_name} completed with an ambiguous success state (error code 0 but no response). Treating as success.")
+            
             if operation.response:
                 response = contact_center_insights_v1.types.Conversation.deserialize(operation.response.value)
                 logger.info(f"Successfully uploaded conversation: {response.name}", extra={"json_fields": {"event": "ccai_upload_success", "conversation_id": conversation_id, "ccai_conversation_name": response.name}})
