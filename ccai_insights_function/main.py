@@ -93,7 +93,8 @@ def main(event, context):
             if error_code == 6: # ALREADY_EXISTS (code 6)
                 logger.warning(f"Conversation with ID '{conversation_id}' already exists. Skipping upload. Operation: {operation_name}")
             else:
-                logger.error(f"LRO failed for operation: {operation_name}. Error: {error_message}", exc_info=True, extra={"json_fields": {"event": "lro_failed", "operation_name": operation_name, "error_code": error_code, "error_message": error_message}})
+                # Log the full error object for more details
+                logger.error(f"LRO failed for operation: {operation_name}. Full error details: {operation.error}", exc_info=True, extra={"json_fields": {"event": "lro_failed", "operation_name": operation_name, "error_code": error_code, "error_message": error_message, "error_details": str(operation.error)}})
                 raise GoogleAPICallError(f"LRO failed: {error_message}")
         else:
             # If operation is done and no error, it must have a response

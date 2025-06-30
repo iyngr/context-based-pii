@@ -20,9 +20,11 @@ This file tracks the project's progress using a task list format.
 *   Refactored `call_dlp_for_redaction` to use `GOOGLE_CLOUD_PROJECT` environment variable.
 *   Resolved "project_id is not defined" errors in `main_service/main.py`.
 *   Resolved "Invalid built-in info type name" error for custom info types in `main_service/main.py`.
+*   Added detailed logging to `ccai_insights_function/main.py` to capture more information about LRO failures.
 
 ## Current Tasks
 
+*   Deploy the updated `ccai_insights_function` to Google Cloud.
 *   Update `productContext.md` with new client requirements.
 *   Update `decisionLog.md` with the architectural decision for post-call redaction.
 *   Update `activeContext.md` with current focus and open questions.
