@@ -85,6 +85,7 @@ def main(event, context):
             logger.info(f"Polling LRO {operation_name}. Not yet done. Retrying in {poll_interval_seconds} seconds.")
 
         # After polling, 'operation' object holds the final state.
+        logger.info(f"LRO {operation_name} is done. Full operation details: {operation}")
         # Check for errors or successful response.
         if operation.error:
             error_message = operation.error.message if operation.error.message else "Unknown LRO error"
