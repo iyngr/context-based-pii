@@ -86,17 +86,29 @@ def main(event, context):
 
         # After polling, 'operation' object holds the final state.
         logger.info(f"LRO {operation_name} is done. Full operation details: {operation}")
+
         # Check for errors or successful response.
         if operation.error:
-            error_message = operation.error.message if operation.error.message else "Unknown LRO error"
-            error_code = operation.error.code if operation.error.code else "UNKNOWN"
-            
-            if error_code == 6: # ALREADY_EXISTS (code 6)
+            error_code = operation.error.code
+            error_message = operation.error.message
+
+            # A specific error code (6) indicates the conversation already exists.
+            # This is not a failure condition for our purposes, but a state to be acknowledged.
+            if error_code == 6: # ALREADY_EXISTS
                 logger.warning(f"Conversation with ID '{conversation_id}' already exists. Skipping upload. Operation: {operation_name}")
-            else:
-                # Log the full error object for more details
-                logger.error(f"LRO failed for operation: {operation_name}. Full error details: {operation.error}", exc_info=True, extra={"json_fields": {"event": "lro_failed", "operation_name": operation_name, "error_code": error_code, "error_message": error_message, "error_details": str(operation.error)}})
-                raise GoogleAPICallError(f"LRO failed: {error_message}")
+                # Exit gracefully without raising an exception.
+                return
+
+            # For all other errors, create a detailed message and raise an exception.
+            if not error_message:
+                error_message = f"LRO failed with error code {error_code} and no message. Full details: {operation.error}"
+            
+            logger.error(
+                f"LRO failed for operation: {operation_name}. Full error details: {operation.error}",
+                exc_info=True,
+                extra={"json_fields": {"event": "lro_failed", "operation_name": operation_name, "error_details": str(operation.error)}}
+            )
+            raise GoogleAPICallError(error_message)
         else:
             # If operation is done and no error, it must have a response
             if operation.response:
