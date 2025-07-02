@@ -3,6 +3,7 @@ import logging
 import subprocess
 import os
 import time
+from google.cloud import pubsub_v1
 
 # Configure logging for the test script
 logging.basicConfig(level=logging.INFO,
@@ -18,7 +19,7 @@ def get_gcp_project_id():
             capture_output=True,
             text=True,
             check=True,
-            shell=True  # Use shell=True for consistency and Windows compatibility
+            shell=False
         )
         project_id = result.stdout.strip()
         if not project_id:
@@ -47,6 +48,10 @@ def run_e2e_test(conversation_filename):
     
     logger.info(f"--- Running E2E test for: {conversation_filename} ---")
     
+    publisher = pubsub_v1.PublisherClient()
+    raw_topic_path = publisher.topic_path(GCP_PROJECT_ID, RAW_TRANSCRIPTS_TOPIC)
+    lifecycle_topic_path = publisher.topic_path(GCP_PROJECT_ID, AA_LIFECYCLE_TOPIC)
+
     try:
         logger.info(f"Attempting to open file: {full_conversation_path}")
         with open(full_conversation_path, 'r') as f:
@@ -78,19 +83,16 @@ def run_e2e_test(conversation_filename):
             "event_type": "conversation_started",
             "start_time": current_time
         })
-        start_command = [
-            'gcloud', 'pubsub', 'topics', 'publish', AA_LIFECYCLE_TOPIC,
-            '--project', GCP_PROJECT_ID,
-            '--message', start_message_payload
-        ]
         logger.info(f"Publishing 'conversation_started' message for '{conversation_id}' to Pub/Sub topic '{AA_LIFECYCLE_TOPIC}'...")
-        subprocess.run(start_command, capture_output=True, text=True, check=True, shell=True)
+        future = publisher.publish(lifecycle_topic_path, start_message_payload.encode("utf-8"))
+        future.result()
         logger.info(f"Published 'conversation_started' for {conversation_id}.")
 
         # 2. Publish individual raw transcript messages from 'entries'
         total_utterance_count = len(conversation_data.get('entries', []))
         logger.info(f"Publishing {total_utterance_count} individual utterances for '{conversation_id}' to Pub/Sub topic '{RAW_TRANSCRIPTS_TOPIC}'...")
         
+        publish_futures = []
         for i, entry in enumerate(conversation_data.get('entries', [])):
             # Ensure each entry has conversation_id, original_entry_index, participant_role, text, start_timestamp_usec
             # The subscriber_service expects these fields.
@@ -105,17 +107,16 @@ def run_e2e_test(conversation_filename):
             }
             
             message_payload = json.dumps(entry_payload)
-            publish_raw_command = [
-                'gcloud', 'pubsub', 'topics', 'publish', RAW_TRANSCRIPTS_TOPIC,
-                '--project', GCP_PROJECT_ID,
-                '--message', message_payload
-            ]
-            logger.info(f"Publishing utterance {i+1}/{total_utterance_count} for '{conversation_id}'...")
-            subprocess.run(publish_raw_command, capture_output=True, text=True, check=True, shell=True)
-            time.sleep(0.01) # Reduced delay to speed up test
+            future = publisher.publish(raw_topic_path, message_payload.encode("utf-8"))
+            publish_futures.append(future)
+        
+        logger.info(f"Waiting for {len(publish_futures)} utterances to publish...")
+        for i, future in enumerate(publish_futures):
+            future.result()
+            logger.info(f"Published utterance {i+1}/{total_utterance_count} for '{conversation_id}'.")
+
 
         logger.info(f"Finished publishing all individual utterances for {conversation_id}.")
-        time.sleep(5) # Reduced delay to speed up test
 
         # 3. Send 'conversation_ended' message with total_utterance_count
         end_message_payload = json.dumps({
@@ -124,13 +125,9 @@ def run_e2e_test(conversation_filename):
             "end_time": current_time, # Using current_time as end_time for simplicity
             "total_utterance_count": total_utterance_count # Pass the total count for aggregator to wait for
         })
-        end_command = [
-            'gcloud', 'pubsub', 'topics', 'publish', AA_LIFECYCLE_TOPIC,
-            '--project', GCP_PROJECT_ID,
-            '--message', end_message_payload
-        ]
         logger.info(f"Publishing 'conversation_ended' message for '{conversation_id}' to Pub/Sub topic '{AA_LIFECYCLE_TOPIC}'...")
-        subprocess.run(end_command, capture_output=True, text=True, check=True, shell=True)
+        future = publisher.publish(lifecycle_topic_path, end_message_payload.encode("utf-8"))
+        future.result()
         logger.info(f"Published 'conversation_ended' for {conversation_id}.")
             
         logger.info(f"--- E2E test completed for: {conversation_filename} ---")
@@ -139,10 +136,6 @@ def run_e2e_test(conversation_filename):
         logger.error(f"Error: Conversation file not found at {conversation_filename}")
     except json.JSONDecodeError:
         logger.error(f"Error: Invalid JSON in {conversation_filename}")
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Error executing gcloud command for {conversation_filename}: {e}")
-        logger.error(f"Command stdout: {e.stdout}")
-        logger.error(f"Command stderr: {e.stderr}")
     except Exception as e:
         logger.error(f"An unexpected error occurred during E2E test for {conversation_filename}: {str(e)}", exc_info=True)
 
