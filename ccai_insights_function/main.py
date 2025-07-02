@@ -1,5 +1,6 @@
 import os
 import logging
+import time
 from google.cloud import contact_center_insights_v1
 from google.api_core.exceptions import AlreadyExists, GoogleAPICallError, DeadlineExceeded
 
@@ -53,17 +54,35 @@ def main(event, context):
             redaction_config=redaction_config,
         )
 
-        logger.info(f"Starting conversation upload for {gcs_uri}. This will block until the LRO completes.")
+        # Implement retry logic for the specific "Unexpected state" error.
+        max_retries = 3
+        backoff_factor = 2
+        last_exception = None
 
-        # The upload_conversation method returns a Long-Running Operation (LRO).
-        # Calling .result() blocks until the LRO is complete, handling polling internally.
-        # This is the standard synchronous method for handling LROs.
-        upload_operation = insights_client.upload_conversation(request=request)
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"Starting conversation upload for {gcs_uri} (Attempt {attempt + 1}/{max_retries}). This will block until the LRO completes.")
+                upload_operation = insights_client.upload_conversation(request=request)
 
-        max_poll_time_seconds = 900  # 15 minutes
-        response = upload_operation.result(timeout=max_poll_time_seconds)
+                max_poll_time_seconds = 900  # 15 minutes
+                response = upload_operation.result(timeout=max_poll_time_seconds)
 
-        logger.info(f"Successfully uploaded conversation: {response.name}", extra={"json_fields": {"event": "ccai_upload_success", "conversation_id": conversation_id, "ccai_conversation_name": response.name}})
+                logger.info(f"Successfully uploaded conversation: {response.name}", extra={"json_fields": {"event": "ccai_upload_success", "conversation_id": conversation_id, "ccai_conversation_name": response.name}})
+                break  # Exit loop on success
+
+            except GoogleAPICallError as e:
+                if "Unexpected state" in str(e) and attempt < max_retries - 1:
+                    last_exception = e
+                    sleep_time = backoff_factor ** attempt
+                    logger.warning(f"Attempt {attempt + 1} failed with unexpected state. Retrying in {sleep_time} seconds...")
+                    time.sleep(sleep_time)
+                else:
+                    raise  # Re-raise for other API errors or on the final attempt
+
+        else:  # This block executes if the loop completes without a 'break'
+            if last_exception:
+                logger.error(f"Failed to upload conversation after {max_retries} retries due to persistent unexpected state.")
+                raise last_exception
 
     except AlreadyExists:
         logger.info(f"Conversation with ID '{conversation_id}' already exists. Skipping upload.")

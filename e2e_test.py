@@ -19,7 +19,7 @@ def get_gcp_project_id():
             capture_output=True,
             text=True,
             check=True,
-            shell=False
+            shell=True  # Use shell=True for consistency and Windows compatibility
         )
         project_id = result.stdout.strip()
         if not project_id:
