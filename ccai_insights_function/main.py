@@ -7,6 +7,7 @@ from google.api_core.exceptions import AlreadyExists, GoogleAPICallError, Deadli
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+logging.getLogger('google.api_core').setLevel(logging.WARNING)
 
 
 def main(event, context):

@@ -274,123 +274,42 @@ def extract_expected_pii(transcript: str) -> str | None:
 
 def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
     """
-    Calls Google DLP to de-identify PII in the transcript.
-    Uses context if available to tailor the DLP request.
+    Calls Google DLP to de-identify PII in the transcript using server-side templates.
+    Context from Redis is logged but no longer used to build dynamic templates.
     """
     if not dlp_client:
         logger.warning("DLP client not available. Returning original transcript.")
         return transcript
-    
-    # Use the globally available GCP_PROJECT_ID_FOR_SECRETS for DLP operations
+
     current_gcp_project_id = GCP_PROJECT_ID_FOR_SECRETS
-    if not current_gcp_project_id or current_gcp_project_id == 'your-gcp-project-id': # Basic check for placeholder
+    if not current_gcp_project_id or current_gcp_project_id == 'your-gcp-project-id':
         logger.warning("GOOGLE_CLOUD_PROJECT environment variable not configured correctly. Returning original transcript.")
         return transcript
 
-    # Always use the regional parent path for templates, even with a global client
-    dlp_location = DLP_CONFIG.get("dlp_location", "us-central1") # Default to us-central1
+    dlp_location = DLP_CONFIG.get("dlp_location", "us-central1")
     parent = f"projects/{current_gcp_project_id}/locations/{dlp_location}"
 
-    # Get template names from DLP_CONFIG
     dlp_templates = DLP_CONFIG.get("dlp_templates", {})
     inspect_template_name = dlp_templates.get("inspect_template_name", "").replace("${PROJECT_ID}", current_gcp_project_id)
     deidentify_template_name = dlp_templates.get("deidentify_template_name", "").replace("${PROJECT_ID}", current_gcp_project_id)
 
-    if not inspect_template_name:
-        logger.warning("DLP Inspect Template name not found in dlp_config.yaml. DLP inspection might be impaired.")
-    if not deidentify_template_name:
-        logger.warning("DLP De-identify Template name not found in dlp_config.yaml. DLP de-identification might be impaired.")
+    if not inspect_template_name or not deidentify_template_name:
+        logger.error("DLP inspect or de-identify template name is not configured in dlp_config.yaml. Cannot proceed with redaction.")
+        return f"[DLP_CONFIGURATION_ERROR] {transcript}"
 
-    # Prepare the inspect_config. Start with the base config from the YAML file.
-    base_inspect_config_from_yaml = DLP_CONFIG.get("inspect_config", {})
-    final_inline_inspect_config = base_inspect_config_from_yaml.copy()
-    dynamic_context_applied = False
-
+    # Log if context was received, but note that it no longer alters the request.
     if context and context.get("expected_pii_type"):
-        dynamic_context_applied = True
-        expected_type = context.get("expected_pii_type")
-        logger.info(f"Contextual PII type received: {expected_type}. Adjusting DLP scan dynamically.")
-
-        # Step 1: Ensure the expected infoType is explicitly included for inspection.
-        # This is critical because likelihood boosting only works on infoTypes that are being inspected.
-        custom_info_types_config = DLP_CONFIG.get("inspect_config", {}).get("custom_info_types", [])
-        custom_type_definition = next((cit for cit in custom_info_types_config if cit.get("info_type", {}).get("name") == expected_type), None)
-
-        if custom_type_definition:
-            # It's a custom type. Add its full definition if not already present.
-            if "custom_info_types" not in final_inline_inspect_config:
-                final_inline_inspect_config["custom_info_types"] = []
-            existing_custom_types = {cit.get("info_type", {}).get("name") for cit in final_inline_inspect_config["custom_info_types"]}
-            if expected_type not in existing_custom_types:
-                final_inline_inspect_config["custom_info_types"].append(custom_type_definition)
-                logger.info(f"Added custom info type '{expected_type}' to final_inline_inspect_config.")
-            # For custom info types, we do NOT add a rule_set with info_types, as it causes "Invalid built-in info type" error.
-            # The custom info type definition itself is sufficient for detection.
-            logger.info(f"Skipping rule_set for custom info type '{expected_type}' to avoid 'Invalid built-in info type' error.")
-        else:
-            # It's a built-in type. Add it to the info_types list if not already present.
-            if "info_types" not in final_inline_inspect_config:
-                final_inline_inspect_config["info_types"] = []
-            existing_info_types = {it.get("name") for it in final_inline_inspect_config["info_types"]}
-            if expected_type not in existing_info_types:
-                final_inline_inspect_config["info_types"].append({"name": expected_type})
-                logger.info(f"Added built-in info type '{expected_type}' to final_inline_inspect_config.")
-
-            # For built-in info types, create a rule to boost the likelihood.
-            rule = {
-                "hotword_rule": {
-                    "hotword_regex": {"pattern": ".+"},
-                    "proximity": {"window_before": 100, "window_after": 100},
-                    "likelihood_adjustment": {"fixed_likelihood": dlp_v2.Likelihood.VERY_LIKELY}
-                }
-            }
-            if "rule_set" not in final_inline_inspect_config:
-                final_inline_inspect_config["rule_set"] = []
-            final_inline_inspect_config["rule_set"].append({
-                "info_types": [{"name": expected_type}], # Specify the info_type for the rule set
-                "rules": [rule]
-            })
-            logger.info(f"DLP inspection configured to boost likelihood for built-in type '{expected_type}' using a dynamic rule set.")
-
-    # Define the default deidentify_config for fallback
-    default_deidentify_config = DLP_CONFIG.get("deidentify_config", {
-        "info_type_transformations": {
-            "transformations": [
-                {
-                    "primitive_transformation": {
-                        "replace_with_info_type_config": {}
-                    }
-                }
-            ]
-        }
-    })
+        logger.info(f"Contextual PII type received: {context.get('expected_pii_type')}. Relying on server-side template for redaction.")
 
     try:
-        logger.info(f"Sending request to DLP API for parent: {parent}, inspect_template: {inspect_template_name}, deidentify_template: {deidentify_template_name}, transcript_preview: {transcript[:100]}")
-        
+        logger.info(f"Sending request to DLP API using templates: inspect='{inspect_template_name}', deidentify='{deidentify_template_name}'")
+
         request = {
             "parent": parent,
             "item": {"value": transcript},
+            "inspect_template_name": inspect_template_name,
+            "deidentify_template_name": deidentify_template_name,
         }
-
-        # Configure inspection:
-        # If dynamic context was applied OR no template is specified, use the inline config.
-        # Otherwise, use the template. This ensures context-based changes are always applied.
-        if dynamic_context_applied or not inspect_template_name:
-            request["inspect_config"] = final_inline_inspect_config
-            logger.info("Using inline inspect_config (dynamic context applied or no template specified).")
-        elif inspect_template_name:
-            request["inspect_template_name"] = inspect_template_name
-            logger.info(f"Using inspect_template_name: {inspect_template_name}")
-        else:
-            request["inspect_config"] = final_inline_inspect_config
-            logger.info("Using base inline inspect_config (no dynamic context, no template).")        # Configure de-identification: Prioritize template or use default inline config.
-        if deidentify_template_name:
-            request["deidentify_template_name"] = deidentify_template_name
-            logger.info(f"Using deidentify_template_name: {deidentify_template_name}")
-        else:
-            request["deidentify_config"] = default_deidentify_config
-            logger.info("Using inline deidentify_config (no template name provided).")
 
         response = dlp_client.deidentify_content(request=request)
         
@@ -398,42 +317,18 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
         logger.info(f"DLP De-identification successful. Redacted_transcript_preview: {redacted_value[:100]}")
         return redacted_value
 
-    except NotFound as e:
-        logger.warning(f"DLP API Error: Requested inspect/deidentify template not found ({inspect_template_name}, {deidentify_template_name}). Falling back to inline configuration. Error: {str(e)}")
-        
-        # Fallback attempt: retry without templates, forcing inline config
-        try:
-            fallback_request = {
-                "parent": parent,
-                "item": {"value": transcript}, # Redefine item here for safety
-                "inspect_config": final_inline_inspect_config, # Always use the prepared inline config for fallback
-                "deidentify_config": default_deidentify_config # Always use the prepared inline config for fallback
-            }
-            logger.info("Attempting DLP with inline inspect_config and deidentify_config (fallback).")
-            response = dlp_client.deidentify_content(request=fallback_request)
-            redacted_value = response.item.value
-            logger.info(f"DLP De-identification successful (fallback). Redacted_transcript_preview: {redacted_value[:100]}")
-            return redacted_value
-        except Exception as fallback_e:
-            logger.error(f"An unexpected error occurred during DLP API fallback call: {str(fallback_e)}")
-            return f"[DLP_FALLBACK_PROCESSING_ERROR] {transcript}"
+    except (NotFound, GoogleAPICallError) as e:
+        if isinstance(e, NotFound) or (hasattr(e, 'code') and e.code == 404):
+             logger.error(f"DLP API Error (404 Not Found): The specified DLP inspect or de-identify templates were not found. Please verify that templates '{inspect_template_name}' and '{deidentify_template_name}' exist in project '{current_gcp_project_id}' in region '{dlp_location}' and that the service account has 'DLP User' role. Error: {str(e)}")
+        else:
+            status_code = e.code if hasattr(e, 'code') else 'N/A'
+            message = e.message if hasattr(e, 'message') else 'N/A'
+            logger.error(f"A Google API Call Error occurred during DLP call: Status Code: {status_code}, Message: {message}. This can be caused by permission issues, invalid arguments, or network problems. Original error: {str(e)}")
+        return f"[DLP_API_CALL_ERROR] {transcript}"
 
     except PermissionDenied as e:
         logger.error(f"DLP API Error: Permission denied for project '{current_gcp_project_id}'. Ensure the service account has 'DLP User' role. Error: {str(e)}")
         return f"[DLP_PERMISSION_DENIED_ERROR] {transcript}"
-
-    except MethodNotImplemented as e:
-        logger.error(f"DLP API Error: {str(e)}")
-        return f"[DLP_METHOD_NOT_IMPLEMENTED_ERROR] {transcript}"
-    except GoogleAPICallError as e:
-        if hasattr(e, 'code') and e.code == 404:
-            logger.error(f"DLP API Error (404 Not Found): The specified DLP inspect or de-identify templates were not found, or the project ID/location is incorrect. Please verify that templates '{inspect_template_name}' and '{deidentify_template_name}' exist in project '{current_gcp_project_id}' in region '{dlp_location}' and that the service account has 'DLP User' role. Error: {str(e)}")
-            return f"[DLP_TEMPLATE_NOT_FOUND_ERROR] {transcript}"
-        else:
-            status_code = e.code if hasattr(e, 'code') else 'N/A'
-            message = e.message if hasattr(e, 'message') else 'N/A'
-            logger.error(f"A generic Google API Call Error occurred during DLP call: Status Code: {status_code}, Message: {message}. This can be caused by permission issues, invalid arguments, or network problems. Please check service account permissions and DLP template paths for project '{current_gcp_project_id}'. Original error: {str(e)}")
-            return f"[DLP_API_CALL_ERROR] {transcript}"
 
     except Exception as e:
         logger.error(f"An unexpected error occurred during DLP API call: {str(e)}")

@@ -142,7 +142,9 @@ def run_e2e_test(conversation_filename):
 if __name__ == "__main__":
     # List of synthetic conversation files to test
     conversation_files = [
-        'refund_inquiry_v1_extended.json'
+        'refund_inquiry_v1_extended.json',
+        'refund_inquiry_v2_extended.json',
+        'refund_inquiry_v3_extended.json',
     ]
 
     for file_path in conversation_files:
