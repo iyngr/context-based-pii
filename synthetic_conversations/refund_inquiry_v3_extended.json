@@ -101,7 +101,7 @@
         },
         {
             "start_timestamp_usec": 1760000065000000,
-            "text": "Yes, it's 12-3456789.",
+            "text": "Yes, it's 82-1234567.",
             "role": "END_USER",
             "user_id": 1,
             "original_entry_index": 13
@@ -129,7 +129,7 @@
         },
         {
             "start_timestamp_usec": 1760000085000000,
-            "text": "My Border Crossing Card number is BCC123456789.",
+            "text": "It is A1234567.",
             "role": "END_USER",
             "user_id": 1,
             "original_entry_index": 17
