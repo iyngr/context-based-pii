@@ -2,7 +2,7 @@ import os
 import logging
 import time
 from google.cloud import contact_center_insights_v1
-from google.api_core.exceptions import AlreadyExists, GoogleAPICallError, DeadlineExceeded
+from google.api_core.exceptions import AlreadyExists, GoogleAPICallError, DeadlineExceeded, NotFound
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -89,6 +89,18 @@ def main(event, context):
     except DeadlineExceeded:
         logger.error(f"LRO for conversation ID '{conversation_id}' timed out after {max_poll_time_seconds} seconds.", exc_info=True)
     except GoogleAPICallError as e:
-        logger.error(f"GoogleAPICallError during conversation upload for conversation ID: {conversation_id}. Error: {e}", exc_info=True)
+        # Handle the specific "Unexpected state" error by verifying the conversation status
+        if "Unexpected state" in str(e):
+            logger.warning(f"LRO for '{conversation_id}' returned an ambiguous state. Verifying conversation status directly.")
+            try:
+                conversation_name = f"{parent}/conversations/{conversation_id}"
+                response = insights_client.get_conversation(name=conversation_name)
+                logger.info(f"Successfully verified conversation upload via get_conversation: {response.name}", extra={"json_fields": {"event": "ccai_upload_success_verified", "conversation_id": conversation_id, "ccai_conversation_name": response.name}})
+            except NotFound:
+                logger.error(f"Verification failed. Conversation '{conversation_id}' not found after ambiguous LRO. Original error: {e}", exc_info=True)
+            except Exception as verification_e:
+                logger.error(f"An unexpected error occurred during verification for '{conversation_id}'. Original error: {e}. Verification error: {verification_e}", exc_info=True)
+        else:
+            logger.error(f"GoogleAPICallError during conversation upload for conversation ID: {conversation_id}. Error: {e}", exc_info=True)
     except Exception as e:
         logger.error(f"An unexpected error occurred for conversation ID '{conversation_id}': {e}", exc_info=True)
