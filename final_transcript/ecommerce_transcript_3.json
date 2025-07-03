@@ -94,7 +94,7 @@
         },
         {
             "start_timestamp_usec": 1780000060000000,
-            "text": "My ITIN is 987-65-4321.",
+            "text": "My ITIN is 942-87-6543.",
             "role": "END_USER",
             "user_id": 1,
             "original_entry_index": 12
@@ -108,7 +108,7 @@
         },
         {
             "start_timestamp_usec": 1780000070000000,
-            "text": "Yes, my EIN is 12-3456789.",
+            "text": "Yes, my EIN is 12-1234567.",
             "role": "END_USER",
             "user_id": 1,
             "original_entry_index": 14
@@ -119,6 +119,34 @@
             "role": "AGENT",
             "user_id": 2,
             "original_entry_index": 15
+        },
+        {
+            "start_timestamp_usec": 1780000080000000,
+            "text": "For military personnel, we offer an additional discount. Do you have a Department of Defense ID number?",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 16
+        },
+        {
+            "start_timestamp_usec": 1780000085000000,
+            "text": "Yes, my DOD ID is 9876543210.",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 17
+        },
+        {
+            "start_timestamp_usec": 1780000090000000,
+            "text": "Thank you. We've also noticed the unrecognized device is still attempting to access your account. Can you provide the MAC address of your primary computer so we can whitelist it?",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 18
+        },
+        {
+            "start_timestamp_usec": 1780000095000000,
+            "text": "Sure, my MAC address is 00-B0-D0-63-C2-26.",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 19
         }
     ]
 }

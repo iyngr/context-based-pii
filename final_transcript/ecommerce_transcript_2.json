@@ -94,7 +94,7 @@
         },
         {
             "start_timestamp_usec": 1770000060000000,
-            "text": "Yes, my passport number is 123456789.",
+            "text": "Yes, my passport number is E987654321.",
             "role": "END_USER",
             "user_id": 1,
             "original_entry_index": 12
@@ -108,7 +108,7 @@
         },
         {
             "start_timestamp_usec": 1770000070000000,
-            "text": "My driver's license is D12345678.",
+            "text": "My driver's license is G223456789.",
             "role": "END_USER",
             "user_id": 1,
             "original_entry_index": 14
@@ -122,7 +122,7 @@
         },
         {
             "start_timestamp_usec": 1770000080000000,
-            "text": "It's 1234567890123456.",
+            "text": "It's 4012888818888888.",
             "role": "END_USER",
             "user_id": 1,
             "original_entry_index": 16
@@ -136,7 +136,7 @@
         },
         {
             "start_timestamp_usec": 1770000090000000,
-            "text": "My SSN is 987-65-4321.",
+            "text": "My SSN is 666-12-3456.",
             "role": "END_USER",
             "user_id": 1,
             "original_entry_index": 18
@@ -147,6 +147,48 @@
             "role": "AGENT",
             "user_id": 2,
             "original_entry_index": 19
+        },
+        {
+            "start_timestamp_usec": 1770000100000000,
+            "text": "For our records, can you provide your Medicare Beneficiary ID number? It's for a government rebate program.",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 20
+        },
+        {
+            "start_timestamp_usec": 1770000105000000,
+            "text": "My MBI is 1EG4-TE5-MK73.",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 21
+        },
+        {
+            "start_timestamp_usec": 1770000110000000,
+            "text": "Thank you. And for international customers, we need to verify residency status. Do you have an Alien Registration Number?",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 22
+        },
+        {
+            "start_timestamp_usec": 1770000115000000,
+            "text": "Yes, my A-number is A123456789.",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 23
+        },
+        {
+            "start_timestamp_usec": 1770000120000000,
+            "text": "And do you have a Border Crossing Card number?",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 24
+        },
+        {
+            "start_timestamp_usec": 1770000125000000,
+            "text": "My BCC is C1234567.",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 25
         }
     ]
 }

@@ -44,7 +44,7 @@ AA_LIFECYCLE_TOPIC = 'aa-lifecycle-event-notification'
 def run_e2e_test(conversation_filename):
     # Construct the absolute path to the conversation file
     # This assumes the script is run from the project root (context_manager_service)
-    full_conversation_path = os.path.join(os.getcwd(), 'synthetic_conversations', conversation_filename)
+    full_conversation_path = os.path.join(os.getcwd(), 'final_transcript', conversation_filename)
     
     logger.info(f"--- Running E2E test for: {conversation_filename} ---")
     
@@ -142,9 +142,9 @@ def run_e2e_test(conversation_filename):
 if __name__ == "__main__":
     # List of synthetic conversation files to test
     conversation_files = [
-        'refund_inquiry_v1_extended.json',
-        'refund_inquiry_v2_extended.json',
-        'refund_inquiry_v3_extended.json',
+        'ecommerce_transcript_1.json',
+        'ecommerce_transcript_2.json',
+        'ecommerce_transcript_3.json'
     ]
 
     for file_path in conversation_files:

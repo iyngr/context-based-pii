@@ -38,24 +38,10 @@
         },
         {
             "start_timestamp_usec": 1760000020000000,
-            "text": "Oh, really? I thought it went through. The credit card number is 4111-1111-1111-1111.",
+            "text": "Oh, really? I thought it went through. The credit card number is 4992-7398-716-1234.",
             "role": "END_USER",
             "user_id": 1,
             "original_entry_index": 4
-        },
-        {
-            "start_timestamp_usec": 1760000025000000,
-            "text": "Thank you. And can you provide the credit card track number as well? It's a long number on the back of your card.",
-            "role": "AGENT",
-            "user_id": 2,
-            "original_entry_index": 5
-        },
-        {
-            "start_timestamp_usec": 1760000030000000,
-            "text": "Sure, it is 12345678901234567890. I hope this resolves the issue.",
-            "role": "END_USER",
-            "user_id": 1,
-            "original_entry_index": 6
         },
         {
             "start_timestamp_usec": 1760000035000000,
@@ -105,6 +91,48 @@
             "role": "AGENT",
             "user_id": 2,
             "original_entry_index": 13
+        },
+        {
+            "start_timestamp_usec": 1760000070000000,
+            "text": "Before we finish, can you please confirm your date of birth for our records? It helps us with account verification in the future.",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 14
+        },
+        {
+            "start_timestamp_usec": 1760000075000000,
+            "text": "Sure, my date of birth is 01/22/1985.",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 15
+        },
+        {
+            "start_timestamp_usec": 1760000080000000,
+            "text": "Thanks. And do you have a social media handle you'd like to add to your profile for promotions? You can find me @TechieTom.",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 16
+        },
+        {
+            "start_timestamp_usec": 1760000085000000,
+            "text": "Yes, my handle is @JaneDoe_123.",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 17
+        },
+        {
+            "start_timestamp_usec": 1760000090000000,
+            "text": "Great. One last thing, we're offering a free device protection plan. I just need your phone's IMEI number to register it.",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 18
+        },
+        {
+            "start_timestamp_usec": 1760000095000000,
+            "text": "Okay, the IMEI is 358578073456789.",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 19
         }
     ]
 }
