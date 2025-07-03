@@ -1,0 +1,152 @@
+{
+    "conversation_info": {
+        "conversation_id": "sess_005_billing_dispute",
+        "categories": [
+            {
+                "display_name": "Billing and International Orders"
+            }
+        ]
+    },
+    "entries": [
+        {
+            "start_timestamp_usec": 1770000000000000,
+            "text": "Hello, I'm calling about a billing error on my recent international order, number 987654321. My name is John Doe.",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 0
+        },
+        {
+            "start_timestamp_usec": 1770000005000000,
+            "text": "Hello John, I can certainly help you with that. To pull up your account, can you please verify your email address?",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 1
+        },
+        {
+            "start_timestamp_usec": 1770000010000000,
+            "text": "It's john.doe@example.com.",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 2
+        },
+        {
+            "start_timestamp_usec": 1770000015000000,
+            "text": "Thank you. I see the order. It seems there was a currency conversion issue. To process a refund for the difference, I'll need to verify some details for security. Could you please provide the CVV of the credit card used for the purchase?",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 3
+        },
+        {
+            "start_timestamp_usec": 1770000020000000,
+            "text": "Sure, the CVV is 123.",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 4
+        },
+        {
+            "start_timestamp_usec": 1770000025000000,
+            "text": "Thank you. Now, we need to set up an international transfer for the refund. Could you provide your bank account number?",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 5
+        },
+        {
+            "start_timestamp_usec": 1770000030000000,
+            "text": "My bank account number is 9876543210.",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 6
+        },
+        {
+            "start_timestamp_usec": 1770000035000000,
+            "text": "And for the international transfer, I'll also need your IBAN code.",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 7
+        },
+        {
+            "start_timestamp_usec": 1770000040000000,
+            "text": "My IBAN is DE89370400440532013000.",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 8
+        },
+        {
+            "start_timestamp_usec": 1770000045000000,
+            "text": "And the SWIFT code for your bank?",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 9
+        },
+        {
+            "start_timestamp_usec": 1770000050000000,
+            "text": "The SWIFT code is COBADEFFXXX.",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 10
+        },
+        {
+            "start_timestamp_usec": 1770000055000000,
+            "text": "For high-value international refunds, we require additional identity verification. Do you have a US Passport number you can provide?",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 11
+        },
+        {
+            "start_timestamp_usec": 1770000060000000,
+            "text": "Yes, my passport number is 123456789.",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 12
+        },
+        {
+            "start_timestamp_usec": 1770000065000000,
+            "text": "As a secondary form of ID, could you also provide your US Driver's License number?",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 13
+        },
+        {
+            "start_timestamp_usec": 1770000070000000,
+            "text": "My driver's license is D12345678.",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 14
+        },
+        {
+            "start_timestamp_usec": 1770000075000000,
+            "text": "We're almost done. We also need to verify the original payment method. Can you provide your US Debit Card number?",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 15
+        },
+        {
+            "start_timestamp_usec": 1770000080000000,
+            "text": "It's 1234567890123456.",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 16
+        },
+        {
+            "start_timestamp_usec": 1770000085000000,
+            "text": "And finally, for tax purposes on the refund, we need your US Social Security Number.",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 17
+        },
+        {
+            "start_timestamp_usec": 1770000090000000,
+            "text": "My SSN is 987-65-4321.",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 18
+        },
+        {
+            "start_timestamp_usec": 1770000095000000,
+            "text": "Thank you for providing all the necessary information. The refund has been processed. You should see it in your account within 5-7 business days. Is there anything else I can help you with?",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 19
+        }
+    ]
+}

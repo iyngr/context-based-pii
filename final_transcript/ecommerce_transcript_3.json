@@ -1,0 +1,124 @@
+{
+    "conversation_info": {
+        "conversation_id": "sess_005_account_takeover_v1",
+        "categories": [
+            {
+                "display_name": "Security and Fraud"
+            }
+        ]
+    },
+    "entries": [
+        {
+            "start_timestamp_usec": 1780000000000000,
+            "text": "Hello, I've noticed some suspicious activity on my account. I think someone might be trying to access it.",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 0
+        },
+        {
+            "start_timestamp_usec": 1780000005000000,
+            "text": "I'm sorry to hear that. I can help you secure your account. Can you please provide your full name and the order ID of your last purchase for verification?",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 1
+        },
+        {
+            "start_timestamp_usec": 1780000010000000,
+            "text": "My name is Jane Smith, and my last order ID was 8675309.",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 2
+        },
+        {
+            "start_timestamp_usec": 1780000015000000,
+            "text": "Thank you, Jane. I see an access attempt from an unrecognized device. To proceed, I need you to confirm your shipping address.",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 3
+        },
+        {
+            "start_timestamp_usec": 1780000020000000,
+            "text": "My address is 456 Oak Avenue, Springfield, IL 62704.",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 4
+        },
+        {
+            "start_timestamp_usec": 1780000025000000,
+            "text": "Thank you. We've detected that the login attempt was made from a different location. The IP address associated with the attempt is 198.51.100.10.",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 5
+        },
+        {
+            "start_timestamp_usec": 1780000030000000,
+            "text": "That's not me! I'm really worried. What should I do?",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 6
+        },
+        {
+            "start_timestamp_usec": 1780000035000000,
+            "text": "Don't worry, we'll secure your account. I've sent a password reset link to your registered email. Please create a new, strong password. Your current password is 'Str0ngP@ssw0rd!'.",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 7
+        },
+        {
+            "start_timestamp_usec": 1780000040000000,
+            "text": "Okay, I'll do that now. Is there anything else?",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 8
+        },
+        {
+            "start_timestamp_usec": 1780000045000000,
+            "text": "For enhanced security, we can add two-factor authentication. I've sent a temporary authorization token to your phone. Please read it back to me. The token is 'aJkL9sE2'.",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 9
+        },
+        {
+            "start_timestamp_usec": 1780000050000000,
+            "text": "Okay, I see it. It's 'aJkL9sE2'.",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 10
+        },
+        {
+            "start_timestamp_usec": 1780000055000000,
+            "text": "Excellent. Your account is now more secure. We also need to verify your identity for our records. Can you provide your US Individual Taxpayer Identification Number?",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 11
+        },
+        {
+            "start_timestamp_usec": 1780000060000000,
+            "text": "My ITIN is 987-65-4321.",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 12
+        },
+        {
+            "start_timestamp_usec": 1780000065000000,
+            "text": "Thank you. And if you have a business, could you also provide your US Employer Identification Number?",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 13
+        },
+        {
+            "start_timestamp_usec": 1780000070000000,
+            "text": "Yes, my EIN is 12-3456789.",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 14
+        },
+        {
+            "start_timestamp_usec": 1780000075000000,
+            "text": "Thank you for providing that information. Your account is now fully secured and verified. Is there anything else I can help you with today?",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 15
+        }
+    ]
+}

@@ -2,245 +2,145 @@
 
 ## 1. System Overview
 
-This system processes agent and customer transcripts from Google Cloud Contact Center AI (CCAI). Its primary purpose is to redact Personally Identifiable Information (PII) from these transcripts using Google Cloud Data Loss Prevention (DLP) and to manage conversation context using a Google Cloud Memorystore for Redis instance.
+This system provides a robust, scalable pipeline for processing agent and customer transcripts from Google Cloud Contact Center AI (CCAI). Its primary purpose is to redact Personally Identifiable Information (PII) from these transcripts in near real-time using Google Cloud Data Loss Prevention (DLP). It leverages a multi-stage, microservices-based architecture to handle context-aware redaction and prepares the final transcripts for analysis in CCAI Insights.
 
-The system consists of two main components:
+The system consists of four main components:
 
-*   **`main_service`**: A Flask application deployed on Google Cloud Run. It is responsible for handling transcript utterances, interacting with Redis for conversation context, and invoking the Google Cloud DLP API for PII redaction.
-*   **`subscriber_service`**: A Google Cloud Function triggered by Pub/Sub messages that contain raw transcripts. This service calls the `main_service` to process the transcripts and then publishes the redacted versions.
+*   **`subscriber_service`**: A Cloud Function that acts as the initial entry point, ingesting raw transcript utterances from a Pub/Sub topic.
+*   **`main_service`**: A Cloud Run service that is the core of the redaction engine. It uses Google Cloud DLP to inspect and de-identify PII, and it manages short-term conversation context using Redis.
+*   **`transcript_aggregator_service`**: A Cloud Run service responsible for handling multi-turn context. It buffers recent utterances and triggers a re-scan of the conversation to catch PII that is revealed across multiple lines of dialogue. It then archives the final, redacted transcript to Google Cloud Storage (GCS).
+*   **`ccai_insights_function`**: A Cloud Function that is triggered by the final transcript being saved to GCS. It uploads the completed transcript to the CCAI Insights API for long-term storage and analysis.
 
-## 2. File Structure
+## 2. Architecture and Data Flow
+
+The services work in sequence to process the data:
+
+```mermaid
+graph TD
+    A[CCAI Platform] -->|1. Raw Utterance| B(Pub/Sub: raw-transcripts);
+    B -->|2. Trigger| C(subscriber_service);
+    C -->|3. Process & Route| D(main_service);
+    D -->|4. Store Context| E(Redis);
+    D -->|5. Redact| F(Google Cloud DLP);
+    D -->|6. Redacted Utterance| G(Pub/Sub: redacted-transcripts);
+    G -->|7. Trigger| H(transcript_aggregator_service);
+    H -->|8. Buffer & Aggregate| E;
+    H -->|9. Re-scan for Context| D;
+    H -->|10. Final Transcript| I(Google Cloud Storage);
+    I -->|11. Trigger| J(ccai_insights_function);
+    J -->|12. Upload for Analysis| K(CCAI Insights API);
+```
+
+## 3. File Structure
 
 ```
 .
 ├── .gcloudignore
-├── Deployment-plan.md
-├── Dockerfile  // Note: Purpose of this root Dockerfile? Builds target main_service/Dockerfile.
-├── main_service/
+├── .gitignore
+├── e2e_test.py
+├── README.md
+├── ccai_insights_function/
+│   ├── cloudbuild.yaml
 │   ├── Dockerfile
-│   ├── main.py       // Flask app, Redis, DLP logic
+│   ├── main.py
+│   └── requirements.txt
+├── deployment/
+│   ├── cloudbuild-dlp-update.yaml
+│   └── update_dlp_templates.py
+├── docs/
+│   └── ... (Architectural diagrams and documentation)
+├── main_service/
+│   ├── cloudbuild.yaml
+│   ├── dlp_config.yaml
+│   ├── Dockerfile
+│   ├── main.py
 │   └── requirements.txt
 ├── subscriber_service/
-│   ├── main.py       // Cloud Function entry point (process_transcript_event)
-│   ├── requirements.txt
-│   └── subscriber.py // Note: Appears to be unused or duplicate of main.py?
+│   ├── cloudbuild.yaml
+│   ├── Dockerfile
+│   ├── main.py
+│   └── requirements.txt
 └── transcript_aggregator_service/
+    ├── cloudbuild.yaml
     ├── Dockerfile
-    ├── main.py       // Flask app, Firestore, CCAI Insights logic
+    ├── main.py
     └── requirements.txt
 ```
 
-## 3. Core Functionality
+## 4. Core Functionality
 
-### `main_service/main.py`
+### `subscriber_service`
 
-*   A Flask application serving endpoints such as `/handle-agent-utterance` and `/handle-customer-utterance`.
-*   Fetches essential configuration (e.g., Redis host/port, DLP Project ID) from Google Cloud Secret Manager.
-*   Connects to a Google Cloud Memorystore for Redis (standalone instance) to store and retrieve conversation context. This context can include information like `expected_pii_type`.
-*   Utilizes the Google Cloud DLP API to perform PII redaction on the transcript data.
+*   **Trigger**: A Cloud Function triggered by new messages on the `raw-transcripts` Pub/Sub topic.
+*   **Responsibilities**:
+    *   Parses the incoming raw transcript utterance.
+    *   Identifies the participant's role (Agent or Customer).
+    *   Makes an HTTP POST request to the appropriate endpoint on the `main_service` (`/handle-agent-utterance` or `/handle-customer-utterance`).
+    *   Publishes the processed (and potentially redacted) utterance to the `redacted-transcripts` topic.
 
-### `subscriber_service/main.py`
+### `main_service`
 
-*   A Google Cloud Function that is triggered by new messages published to the `raw-transcripts` Pub/Sub topic.
-*   Parses incoming transcript data, expecting a `sessionId` within the `conversation_info` field.
-*   Makes HTTP POST requests to the relevant endpoints exposed by the `main_service`.
-*   Publishes the redacted transcript (specifically for customer utterances) to the `redacted-transcripts` Pub/Sub topic.
-*   Fetches its configuration (e.g., `main_service` URL, output Pub/Sub topic name) from Google Cloud Secret Manager.
+*   **Trigger**: A Cloud Run service that receives HTTP requests from the `subscriber_service`.
+*   **Responsibilities**:
+    *   **Context Management**: For agent utterances, it parses the text to identify if a specific type of PII is being requested. If so, it stores this `expected_pii_type` in Redis with a short TTL.
+    *   **PII Redaction**: For customer utterances, it calls the Google Cloud DLP API to inspect and redact PII.
+    *   **Dynamic DLP**: If context (an `expected_pii_type`) exists in Redis for the conversation, it dynamically adjusts the DLP scan to increase the likelihood of finding that specific PII type, improving accuracy.
+    *   Returns the redacted transcript to the `subscriber_service`.
 
-### `transcript_aggregator_service/main.py`
+### `transcript_aggregator_service`
 
-*   A Flask application deployed on Google Cloud Run, subscribing to `redacted-transcripts` and CCAI lifecycle events.
-*   Aggregates individual redacted utterances into full conversation transcripts using Google Cloud Firestore (`redacted-transcript-db`) for temporary storage.
-*   Detects the end of a conversation based on CCAI lifecycle notifications (e.g., "conversation ended").
-*   Upon conversation completion, retrieves the full, ordered transcript from Firestore.
-*   Calls the Google Cloud Conversation Insights API to ingest the aggregated and redacted transcript for analytics.
-*   Includes robust logging and error handling.
+*   **Trigger**: A Cloud Run service with two endpoints, both triggered by Pub/Sub push subscriptions.
+*   **Responsibilities**:
+    *   **Multi-Turn Context Handling** (`/redacted-transcripts` endpoint):
+        *   Receives each redacted utterance from the `redacted-transcripts` topic.
+        *   Stores the utterance in a Redis list that acts as a "sliding window" of the last N utterances for that conversation.
+        *   Combines the text from the entire window and sends it back to the `main_service` to be re-scanned by DLP. This catches PII that is revealed across multiple turns (e.g., "My number is..." followed by "555-123-4567").
+    *   **Finalization** (`/conversation-ended` endpoint):
+        *   Receives a notification when a conversation has ended.
+        *   Retrieves the complete, ordered set of utterances from Redis.
+        *   Uploads the final, aggregated transcript to a Google Cloud Storage bucket for permanent archival.
 
-## 4. Continuous Integration/Continuous Deployment (CI/CD) Setup
+The following diagram illustrates the multi-turn context flow:
 
-This project utilizes Google Cloud Build for its CI/CD pipeline, enabling automated builds and deployments upon code changes.
+```mermaid
+sequenceDiagram
+    participant C as Customer
+    participant A as Agent
+    participant TAS as transcript_aggregator_service
+    participant R as Redis
+    participant MS as main_service
 
-### Key Aspects of the CI/CD Setup:
-
-*   **Artifact Registry Repository:** A new Artifact Registry repository named `ccai-services` has been created in `us-central1` to store all Docker images for the project's services.
-    *   **Repository Name:** `ccai-services`
-    *   **Location:** `us-central1`
-    *   **Format:** Docker
-
-*   **Service-Specific Cloud Build Configurations:** Each service (`main_service`, `subscriber_service`, `transcript_aggregator_service`) has its own dedicated `cloudbuild.yaml` file located within its respective service directory. This allows for independent build and deployment processes for each service.
-    *   **Example (`main_service/cloudbuild.yaml`):**
-        ```yaml
-        steps:
-        - id: 'Build context-manager image'
-          name: 'gcr.io/cloud-builders/docker'
-          args: ['build', '-t', '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/context-manager-image:${SHORT_SHA}', '.']
-          dir: 'main_service'
-
-        - id: 'Push context-manager image'
-          name: 'gcr.io/cloud-builders/docker'
-          args: ['push', '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/context-manager-image:${SHORT_SHA}']
-
-        - id: 'Deploy context-manager to Cloud Run'
-          name: 'gcr.io/cloud-builders/gcloud'
-          args:
-            - 'run'
-            - 'deploy'
-            - 'context-manager'
-            - '--image'
-            - '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/context-manager-image:${SHORT_SHA}'
-            - '--region'
-            - 'us-central1'
-            - '--platform'
-            - 'managed'
-            - '--allow-unauthenticated'
-            - '--service-account'
-            - '${_MAIN_SERVICE_SA}'
-            - '--vpc-connector'
-            - '${_VPC_CONNECTOR}'
-            - '--vpc-egress'
-            - 'all'
-            - '--set-env-vars'
-            - 'GOOGLE_CLOUD_PROJECT=${PROJECT_ID},CONTEXT_TTL_SECONDS=90'
-            - '--min-instances=0'
-            - '--max-instances=1'
-
-        substitutions:
-          _GAR_LOCATION: 'us-central1'
-          _GAR_REPOSITORY: 'ccai-services'
-          _MAIN_SERVICE_SA: 'context-manager-sa@${PROJECT_ID}.iam.gserviceaccount.com'
-          _VPC_CONNECTOR: 'redis-connector'
-
-        options:
-          logging: CLOUD_LOGGING_ONLY
-        ```
-
-*   **Cloud Build Triggers:** Three separate Cloud Build triggers have been configured, one for each service. These triggers are set up to:
-    *   Monitor changes in specific service folders (e.g., `main_service/`).
-    *   Use "Included files filter" in advanced settings to ensure that a build is only initiated when files within that specific folder are modified.
-    *   Each trigger is connected to a specific service account that has the necessary permissions for building and deploying its respective service, including `Service Account User` permissions on itself for impersonation during deployment.
-
-*   **GitHub Integration:** A Developer Connect GitHub account in GCP has been connected to the personal GitHub repository where this project is hosted. This integration ensures that any commit made to the `master` branch will automatically trigger the relevant Cloud Build based on the folder configuration.
-
-This setup establishes a robust CI/CD pipeline for automatic builds and deployments of each service.
-
-## 5. Google Cloud Resources Used (Production Configuration)
-
-*   **Project ID:** `YOUR_GCP_PROJECT_ID`
-*   **Region:** `us-central1` (for Cloud Run, Cloud Function, Memorystore, VPC Connector)
-*   **Cloud Run Service (`main_service`):**
-    *   Name: `context-manager`
-    *   Deployed Image: `gcr.io/YOUR_GCP_PROJECT_ID/context-manager-image`
-    *   Service Account: `context-manager-sa\1***\3`
-*   **Cloud Function (`subscriber_service`):**
-    *   Name: `transcript-processor`
-    *   Runtime: `python311`
-    *   Entry Point: `process_transcript_event` (in `subscriber_service/main.py`)
-    *   Service Account: `transcript-processor-sa\1***\3`
-*   **Cloud Run Service (`transcript_aggregator_service`):**
-    *   Name: `transcript-aggregator`
-    *   Deployed Image: `gcr.io/YOUR_GCP_PROJECT_ID/transcript-aggregator-image`
-    *   Service Account: `transcript-aggregator-sa\1***\3`
-*   **Pub/Sub Topics:**
-    *   Input Topic (for raw transcripts): `raw-transcripts`
-    *   Output Topic (for redacted transcripts): `redacted-transcripts`
-    *   CCAI Lifecycle Events Topic: `ccai-lifecycle-events` (or similar, configured in CCAI)
-*   **Pub/Sub Subscriptions:**
-    *   `transcript-aggregator-redacted-sub`: Push subscription to `redacted-transcripts` topic, pushing to `transcript-aggregator` service.
-    *   `transcript-aggregator-ccai-sub`: Push subscription to `ccai-lifecycle-events` topic, pushing to `transcript-aggregator` service.
-*   **Firestore Database:**
-    *   Name: `redacted-transcript-db`
-    *   Mode: Firestore Native
-    *   Region: `us-central1`
-*   **Service Accounts and IAM Permissions:**
-    *   `transcript-aggregator-sa\1***\3`:
-        *   Cloud Run Invoker (`roles/run.invoker`) (for push subscriptions)
-        *   Pub/Sub Subscriber (`roles/pubsub.subscriber`)
-        *   Firestore User (`roles/datastore.user`)
-        *   Conversation Insights API User (`roles/contactcenterinsights.viewer` and `contactcenterinsights.editor` or custom roles for ingestion)
-*   **Memorystore for Redis (Standalone Instance):**
-    *   Network: `default` VPC in `YOUR_GCP_PROJECT_ID`
-    *   Private IP Address: `\1.***.\2.\3`
-    *   Port: `6379`
-    *   In-transit encryption: **Disabled**
-*   **Serverless VPC Access Connector:**
-    *   Name: `redis-connector`
-    *   Network: `default`
-    *   Region: `us-central1`
-    *   IP Range: `\1.***.\2.\3/28` (Example, confirm actual if different)
-*   **Secrets in Google Cloud Secret Manager:**
-    *   `CONTEXT_MANAGER_REDIS_HOST`: Value `\1.***.\2.\3`
-    *   `CONTEXT_MANAGER_REDIS_PORT`: Value `6379`
-    *   `CONTEXT_MANAGER_DLP_PROJECT_ID`: Value `YOUR_GCP_PROJECT_ID`
-    *   `SUBSCRIBER_CONTEXT_MANAGER_URL`: Value `https://context-manager-***.us-central1.run.app`
-    *   `SUBSCRIBER_REDACTED_TOPIC_NAME`: Value `redacted-transcripts`
-    *   `SUBSCRIBER_GCP_PROJECT_ID`: Value `YOUR_GCP_PROJECT_ID`
-
-## 5. Build and Deployment Instructions
-
-### Prerequisites
-
-*   Google Cloud SDK installed and authenticated.
-*   Target Google Cloud project (`YOUR_GCP_PROJECT_ID`) selected (`gcloud config set project YOUR_GCP_PROJECT_ID`).
-*   Required APIs enabled:
-    *   Cloud Run API (`run.googleapis.com`)
-    *   Cloud Functions API (`cloudfunctions.googleapis.com`)
-    *   Pub/Sub API (`pubsub.googleapis.com`)
-    *   Cloud Build API (`cloudbuild.googleapis.com`)
-    *   Compute Engine API (`compute.googleapis.com`) (for VPC Connector)
-    *   Memorystore for Redis API (`redis.googleapis.com`)
-    *   Cloud Data Loss Prevention (DLP) API (`dlp.googleapis.com`)
-    *   Identity and Access Management (IAM) API (`iam.googleapis.com`)
-    *   Secret Manager API (`secretmanager.googleapis.com`)
-    *   Artifact Registry API (`artifactregistry.googleapis.com`) (if `gcr.io` is an alias or if using Artifact Registry directly)
-*   Service accounts created with appropriate IAM roles:
-    *   `context-manager-sa\1***\3`:
-        *   Secret Manager Secret Accessor (`roles/secretmanager.secretAccessor`)
-        *   Redis Client (`roles/redis.client`)
-        *   DLP User (`roles/dlp.user`)
-    *   `transcript-processor-sa\1***\3`:
-        *   Secret Manager Secret Accessor (`roles/secretmanager.secretAccessor`)
-        *   Pub/Sub Publisher (`roles/pubsub.publisher`)
-        *   Cloud Run Invoker (`roles/run.invoker`) (to call `main_service`)
-*   Pub/Sub topics created:
-    *   `raw-transcripts`
-    *   `redacted-transcripts`
-*   Memorystore for Redis instance created in the `default` VPC, `us-central1` region, with in-transit encryption disabled. Note its private IP address.
-*   Serverless VPC Access connector (`redis-connector`) created in the `default` VPC, `us-central1` region, connected to the appropriate network.
-*   All secrets listed in the "Secrets in Google Cloud Secret Manager" section created and populated with their respective values.
-
-### Build `main_service` Docker Image
-
-```bash
-# Ensure you are in the project root directory (where main_service/ directory exists)
-gcloud builds submit --tag gcr.io/YOUR_GCP_PROJECT_ID/context-manager-image ./main_service --project=YOUR_GCP_PROJECT_ID
+    Note over C, A: Conversation Unfolds
+    A->>C: "For verification, what is your SSN?"
+    TAS->>R: Store Utterance 1
+    C->>A: "One moment please."
+    TAS->>R: Store Utterance 2
+    A->>C: "Certainly."
+    TAS->>R: Store Utterance 3
+    C->>A: "Okay, I have it."
+    TAS->>R: Store Utterance 4
+    C->>A: "My SSN is 987-65-4321."
+    TAS->>R: Store Utterance 5 (Window is now full)
+    
+    Note over TAS, R: Aggregation
+    TAS->>R: Get last 5 utterances
+    R-->>TAS: [U1, U2, U3, U4, U5]
+    
+    Note over TAS, MS: Forward for PII Detection
+    TAS->>MS: POST { transcript: "For verification...987-65-4321" }
+    MS->>MS: Detect SSN based on combined context
 ```
 
-### Deploy `main_service` to Cloud Run
+### `ccai_insights_function`
 
-```bash
-gcloud run deploy context-manager \
-  --image gcr.io/YOUR_GCP_PROJECT_ID/context-manager-image \
-  --platform managed \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --service-account context-manager-sa\1***\3 \
-  --project=YOUR_GCP_PROJECT_ID \
-  --vpc-connector redis-connector \
-  --vpc-egress all
-```
-*Note: After deployment, if the service URL for `context-manager` changes (e.g., due to redeployment or a new revision becoming default), you **must** update the `SUBSCRIBER_CONTEXT_MANAGER_URL` secret in Secret Manager to reflect the new URL.*
+*   **Trigger**: A Cloud Function triggered by a new file being created in the GCS bucket where final transcripts are stored.
+*   **Responsibilities**:
+    *   Takes the GCS path of the newly created transcript file.
+    *   Calls the CCAI Insights API to upload the conversation for analysis.
+    *   Includes retry logic to handle potential API errors gracefully.
 
-### Deploy `subscriber_service` Cloud Function
+## 5. CI/CD and Deployment
 
-```bash
-# Ensure you are in the project root directory (where subscriber_service/ directory exists)
-gcloud functions deploy transcript-processor \
-  --runtime python311 \
-  --trigger-topic raw-transcripts \
-  --entry-point process_transcript_event \
-  --region us-central1 \
-  --service-account transcript-processor-sa\1***\3 \
-  --source ./subscriber_service \
-  --project=YOUR_GCP_PROJECT_ID \
-  --clear-vpc-connector \
-  --egress-settings all
+This project utilizes Google Cloud Build for its CI/CD pipeline. Each of the four services has its own `cloudbuild.yaml` file, allowing for independent, automated builds and deployments to Cloud Run or Cloud Functions whenever code is pushed to the main branch of the repository.
+
+*(Note: The detailed deployment instructions and resource lists from the original README have been omitted for brevity but can be inferred from the `cloudbuild.yaml` files within each service directory.)*
