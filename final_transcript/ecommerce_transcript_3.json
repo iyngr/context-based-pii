@@ -59,31 +59,17 @@
         },
         {
             "start_timestamp_usec": 1780000035000000,
-            "text": "Don't worry, we'll secure your account. I've sent a password reset link to your registered email. Please create a new, strong password. Your current password is 'Str0ngP@ssw0rd!'.",
+            "text": "Don't worry, we'll secure your account. I've sent a password reset link to your registered email. Please create a new, strong password.",
             "role": "AGENT",
             "user_id": 2,
             "original_entry_index": 7
         },
         {
             "start_timestamp_usec": 1780000040000000,
-            "text": "Okay, I'll do that now. Is there anything else?",
+            "text": "Okay, I'll do that now. Thank you.",
             "role": "END_USER",
             "user_id": 1,
             "original_entry_index": 8
-        },
-        {
-            "start_timestamp_usec": 1780000045000000,
-            "text": "For enhanced security, we can add two-factor authentication. I've sent a temporary authorization token to your phone. Please read it back to me. The token is 'aJkL9sE2'.",
-            "role": "AGENT",
-            "user_id": 2,
-            "original_entry_index": 9
-        },
-        {
-            "start_timestamp_usec": 1780000050000000,
-            "text": "Okay, I see it. It's 'aJkL9sE2'.",
-            "role": "END_USER",
-            "user_id": 1,
-            "original_entry_index": 10
         },
         {
             "start_timestamp_usec": 1780000055000000,
@@ -143,10 +129,17 @@
         },
         {
             "start_timestamp_usec": 1780000095000000,
-            "text": "Sure, my MAC address is 00-B0-D0-63-C2-26.",
+            "text": "Okay, sure.",
             "role": "END_USER",
             "user_id": 1,
             "original_entry_index": 19
+        },
+        {
+            "start_timestamp_usec": 1780000100000000,
+            "text": "My MAC address is 00-B0-D0-63-C2-26.",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 20
         }
     ]
 }

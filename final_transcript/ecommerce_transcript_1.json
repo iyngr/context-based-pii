@@ -38,101 +38,108 @@
         },
         {
             "start_timestamp_usec": 1760000020000000,
-            "text": "Oh, really? I thought it went through. The credit card number is 4992-7398-716-1234.",
+            "text": "Okay, sure.",
             "role": "END_USER",
             "user_id": 1,
             "original_entry_index": 4
         },
         {
-            "start_timestamp_usec": 1760000035000000,
+            "start_timestamp_usec": 1760000025000000,
+            "text": "Here's my card number. It's 4141-1212-2323-5009.",
+            "role": "END_USER",
+            "user_id": 1,
+            "original_entry_index": 5
+        },
+        {
+            "start_timestamp_usec": 1760000030000000,
             "text": "Thank you. I'm checking that now. It seems the transaction was declined. We can try processing it again. Can you confirm your email address so we can send you a confirmation?",
             "role": "AGENT",
             "user_id": 2,
+            "original_entry_index": 6
+        },
+        {
+            "start_timestamp_usec": 1760000035000000,
+            "text": "Yes, my email is jane.doe@example.com.",
+            "role": "END_USER",
+            "user_id": 1,
             "original_entry_index": 7
         },
         {
             "start_timestamp_usec": 1760000040000000,
-            "text": "Yes, my email is jane.doe@example.com.",
-            "role": "END_USER",
-            "user_id": 1,
+            "text": "Perfect. And your phone number for our records?",
+            "role": "AGENT",
+            "user_id": 2,
             "original_entry_index": 8
         },
         {
             "start_timestamp_usec": 1760000045000000,
-            "text": "Perfect. And your phone number for our records?",
-            "role": "AGENT",
-            "user_id": 2,
+            "text": "It's 555-555-5555.",
+            "role": "END_USER",
+            "user_id": 1,
             "original_entry_index": 9
         },
         {
             "start_timestamp_usec": 1760000050000000,
-            "text": "It's 555-555-5555.",
-            "role": "END_USER",
-            "user_id": 1,
+            "text": "Great. And finally, can you confirm your shipping address? Just the city and state.",
+            "role": "AGENT",
+            "user_id": 2,
             "original_entry_index": 10
         },
         {
             "start_timestamp_usec": 1760000055000000,
-            "text": "Great. And finally, can you confirm your shipping address? Just the city and state.",
-            "role": "AGENT",
-            "user_id": 2,
+            "text": "I live in New York, New York.",
+            "role": "END_USER",
+            "user_id": 1,
             "original_entry_index": 11
         },
         {
             "start_timestamp_usec": 1760000060000000,
-            "text": "I live in New York, New York.",
-            "role": "END_USER",
-            "user_id": 1,
+            "text": "Thank you for that information. I have updated your payment details and the order is now being processed. You should receive a confirmation email shortly.",
+            "role": "AGENT",
+            "user_id": 2,
             "original_entry_index": 12
         },
         {
             "start_timestamp_usec": 1760000065000000,
-            "text": "Thank you for that information. I have updated your payment details and the order is now being processed. You should receive a confirmation email shortly.",
+            "text": "Before we finish, can you please confirm your date of birth for our records? It helps us with account verification in the future.",
             "role": "AGENT",
             "user_id": 2,
             "original_entry_index": 13
         },
         {
             "start_timestamp_usec": 1760000070000000,
-            "text": "Before we finish, can you please confirm your date of birth for our records? It helps us with account verification in the future.",
-            "role": "AGENT",
-            "user_id": 2,
+            "text": "Sure, my date of birth is 01/22/1985.",
+            "role": "END_USER",
+            "user_id": 1,
             "original_entry_index": 14
         },
         {
             "start_timestamp_usec": 1760000075000000,
-            "text": "Sure, my date of birth is 01/22/1985.",
-            "role": "END_USER",
-            "user_id": 1,
+            "text": "Thanks. And do you have a social media handle you'd like to add to your profile for promotions? You can find me @TechieTom.",
+            "role": "AGENT",
+            "user_id": 2,
             "original_entry_index": 15
         },
         {
             "start_timestamp_usec": 1760000080000000,
-            "text": "Thanks. And do you have a social media handle you'd like to add to your profile for promotions? You can find me @TechieTom.",
-            "role": "AGENT",
-            "user_id": 2,
+            "text": "Yes, my handle is @JaneDoe_123.",
+            "role": "END_USER",
+            "user_id": 1,
             "original_entry_index": 16
         },
         {
             "start_timestamp_usec": 1760000085000000,
-            "text": "Yes, my handle is @JaneDoe_123.",
-            "role": "END_USER",
-            "user_id": 1,
+            "text": "Great. One last thing, we're offering a free device protection plan. I just need your phone's IMEI number to register it.",
+            "role": "AGENT",
+            "user_id": 2,
             "original_entry_index": 17
         },
         {
             "start_timestamp_usec": 1760000090000000,
-            "text": "Great. One last thing, we're offering a free device protection plan. I just need your phone's IMEI number to register it.",
-            "role": "AGENT",
-            "user_id": 2,
-            "original_entry_index": 18
-        },
-        {
-            "start_timestamp_usec": 1760000095000000,
-            "text": "Okay, the IMEI is 358578073456789.",
+            "text": "Okay, the IMEI is 490154203237518.",
             "role": "END_USER",
             "user_id": 1,
-            "original_entry_index": 19
+            "original_entry_index": 18
         }
     ]
 }

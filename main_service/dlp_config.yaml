@@ -89,12 +89,6 @@ context_keywords:
   - itin
   - taxpayer id
   - tax id
-  AUTH_TOKEN:
-  - auth token
-  - authorization token
-  - token
-  PASSWORD:
-  - password
 inspect_config:
   info_types:
   - name: EMAIL_ADDRESS
@@ -111,8 +105,6 @@ inspect_config:
   - name: US_MEDICARE_BENEFICIARY_ID_NUMBER
   - name: US_INDIVIDUAL_TAXPAYER_IDENTIFICATION_NUMBER
   - name: DOD_ID_NUMBER
-  - name: AUTH_TOKEN
-  - name: PASSWORD
   - name: MAC_ADDRESS
   - name: IP_ADDRESS
   - name: SWIFT_CODE
@@ -188,17 +180,6 @@ inspect_config:
     - hotword_rule:
         hotword_regex:
           pattern: "(?i)(imei|hardware id|mac address|physical address|ip address|internet protocol address)"
-        proximity:
-          window_before: 50
-        likelihood_adjustment:
-          fixed_likelihood: LIKELY
-  - info_types:
-    - name: AUTH_TOKEN
-    - name: PASSWORD
-    rules:
-    - hotword_rule:
-        hotword_regex:
-          pattern: "(?i)(auth token|authorization token|token|password)"
         proximity:
           window_before: 50
         likelihood_adjustment:

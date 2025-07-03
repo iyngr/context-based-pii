@@ -115,14 +115,14 @@
         },
         {
             "start_timestamp_usec": 1770000075000000,
-            "text": "We're almost done. We also need to verify the original payment method. Can you provide your US Debit Card number?",
+            "text": "We're almost done. We also need to verify the original payment method. Can you provide your Credit Card number?",
             "role": "AGENT",
             "user_id": 2,
             "original_entry_index": 15
         },
         {
             "start_timestamp_usec": 1770000080000000,
-            "text": "It's 4012888818888888.",
+            "text": "It's 4141-1212-2323-5009.",
             "role": "END_USER",
             "user_id": 1,
             "original_entry_index": 16
@@ -136,59 +136,66 @@
         },
         {
             "start_timestamp_usec": 1770000090000000,
-            "text": "My SSN is 666-12-3456.",
+            "text": "Okay, sure.",
             "role": "END_USER",
             "user_id": 1,
             "original_entry_index": 18
         },
         {
             "start_timestamp_usec": 1770000095000000,
-            "text": "Thank you for providing all the necessary information. The refund has been processed. You should see it in your account within 5-7 business days. Is there anything else I can help you with?",
-            "role": "AGENT",
-            "user_id": 2,
+            "text": "It is 123-45-6789.",
+            "role": "END_USER",
+            "user_id": 1,
             "original_entry_index": 19
         },
         {
             "start_timestamp_usec": 1770000100000000,
-            "text": "For our records, can you provide your Medicare Beneficiary ID number? It's for a government rebate program.",
+            "text": "Thank you for providing all the necessary information. The refund has been processed. You should see it in your account within 5-7 business days. Is there anything else I can help you with?",
             "role": "AGENT",
             "user_id": 2,
             "original_entry_index": 20
         },
         {
             "start_timestamp_usec": 1770000105000000,
-            "text": "My MBI is 1EG4-TE5-MK73.",
-            "role": "END_USER",
-            "user_id": 1,
+            "text": "For our records, can you provide your Medicare Beneficiary ID number? It's for a government rebate program.",
+            "role": "AGENT",
+            "user_id": 2,
             "original_entry_index": 21
         },
         {
             "start_timestamp_usec": 1770000110000000,
-            "text": "Thank you. And for international customers, we need to verify residency status. Do you have an Alien Registration Number?",
-            "role": "AGENT",
-            "user_id": 2,
+            "text": "My MBI is 1EG4-TE5-MK73.",
+            "role": "END_USER",
+            "user_id": 1,
             "original_entry_index": 22
         },
         {
             "start_timestamp_usec": 1770000115000000,
-            "text": "Yes, my A-number is A123456789.",
-            "role": "END_USER",
-            "user_id": 1,
+            "text": "Thank you. And for international customers, we need to verify residency status. Do you have an Alien Registration Number?",
+            "role": "AGENT",
+            "user_id": 2,
             "original_entry_index": 23
         },
         {
             "start_timestamp_usec": 1770000120000000,
-            "text": "And do you have a Border Crossing Card number?",
-            "role": "AGENT",
-            "user_id": 2,
+            "text": "Yes, my A-number is A123456789.",
+            "role": "END_USER",
+            "user_id": 1,
             "original_entry_index": 24
         },
         {
             "start_timestamp_usec": 1770000125000000,
+            "text": "And do you have a Border Crossing Card number?",
+            "role": "AGENT",
+            "user_id": 2,
+            "original_entry_index": 25
+        },
+        {
+            "start_timestamp_usec": 1770000130000000,
             "text": "My BCC is C1234567.",
             "role": "END_USER",
             "user_id": 1,
-            "original_entry_index": 25
+            "original_entry_index": 26
         }
     ]
 }
