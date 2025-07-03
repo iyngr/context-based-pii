@@ -17,18 +17,18 @@ The services work in sequence to process the data:
 
 ```mermaid
 graph TD
-    A[CCAI Platform] -->|1. Raw Utterance| B(Pub/Sub: raw-transcripts);
-    B -->|2. Trigger| C(subscriber_service);
-    C -->|3. Process & Route| D(main_service);
-    D -->|4. Store Context| E(Redis);
-    D -->|5. Redact| F(Google Cloud DLP);
-    D -->|6. Redacted Utterance| G(Pub/Sub: redacted-transcripts);
-    G -->|7. Trigger| H(transcript_aggregator_service);
-    H -->|8. Buffer & Aggregate| E;
-    H -->|9. Re-scan for Context| D;
-    H -->|10. Final Transcript| I(Google Cloud Storage);
-    I -->|11. Trigger| J(ccai_insights_function);
-    J -->|12. Upload for Analysis| K(CCAI Insights API);
+    A[CCAI Platform] -->|Raw Utterance| B(Pub/Sub: raw-transcripts);
+    B -->|Trigger| C(subscriber_service);
+    C -->|Process & Route| D(main_service);
+    D -->|Store Context| E(Redis);
+    D -->|Redact| F(Google Cloud DLP);
+    D -->|Redacted Utterance| G(Pub/Sub: redacted-transcripts);
+    G -->|Trigger| H(transcript_aggregator_service);
+    H -->|Buffer & Aggregate| E;
+    H -->|Re-scan for Context| D;
+    H -->|Final Transcript| I(Google Cloud Storage);
+    I -->|Trigger| J(ccai_insights_function);
+    J -->|Upload for Analysis| K(CCAI Insights API);
 ```
 
 ## 3. File Structure
