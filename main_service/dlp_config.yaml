@@ -184,8 +184,16 @@ inspect_config:
           window_before: 50
         likelihood_adjustment:
           fixed_likelihood: LIKELY
+  - info_types:
+    - name: SOCIAL_HANDLE
+    rules:
+    - exclusion_rule:
+        matching_type: MATCHING_TYPE_FULL_MATCH
+        exclude_info_types:
+          info_types:
+          - EMAIL_ADDRESS
 deidentify_config:
-  info_type_transformations:
-    transformations:
-    - primitive_transformation:
-        replace_with_info_type_config: {}
+info_type_transformations:
+  transformations:
+  - primitive_transformation:
+      replace_with_info_type_config: {}
