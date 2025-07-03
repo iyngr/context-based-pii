@@ -17,15 +17,16 @@ It is optional, but recommended to be updated as the project evolves.
 ## Testing Patterns
 
 *
-[2025-06-03 01:11:40] - **Post-Call PII Redaction and Conversation Insights Integration:**
-    *   **Pattern:** Raw transcripts flow to Agent Assist for real-time PII verification. Post-call, a dedicated process redacts PII and sends the full, ordered transcript to Google Cloud Conversation Insights.
+[2025-06-03 01:11:40] - **Multi-Turn Context-Based PII Redaction and Conversation Insights Integration:**
+    *   **Pattern:** Raw transcripts flow to Agent Assist for real-time PII verification. A multi-service pipeline handles PII redaction and ingestion into Google Cloud Conversation Insights.
     *   **Components:**
-        *   **Agent Assist:** Configured to *not* send data to Conversation Insights directly. Publishes raw transcripts to Pub/Sub.
-        *   **`subscriber_service`:** Subscribes to raw transcript Pub/Sub. Temporarily stores raw utterances (e.g., in Redis) per `conversation_id`. Upon "end of call" signal, retrieves, aggregates, and orders the full raw transcript.
-        *   **`main_service`:** Provides a new endpoint for comprehensive, post-call PII redaction of entire conversation transcripts.
-        *   **Conversation Insights Ingestion Component (within `subscriber_service` or new service):** Calls Google Cloud Conversation Insights API with the fully redacted and chronologically ordered transcript.
-    *   **Rationale:** Addresses client requirement for raw transcripts in Agent Assist while ensuring PII redaction for Conversation Insights.
-    *   **Implications:** Requires robust "end of call" detection, efficient temporary storage, and careful handling of transcript ordering for Insights API.
+        *   **Agent Assist:** Publishes raw transcripts to Pub/Sub.
+        *   **`subscriber_service`:** Subscribes to raw transcript Pub/Sub, calls `main_service` for redaction, and publishes redacted transcripts.
+        *   **`main_service`:** Handles PII redaction using Google Cloud DLP. It maintains multi-turn context in Redis by identifying "expected PII types" from agent utterances, which dynamically influences DLP's likelihood boosting for customer utterances.
+        *   **`transcript_aggregator_service`:** Subscribes to redacted transcripts, aggregates conversations using Firestore, detects end-of-call via CCAI lifecycle events, and prepares full transcripts for ingestion.
+        *   **`ccai_insights_function`:** A dedicated service responsible for ingesting aggregated transcripts into Google Cloud Conversation Insights.
+    *   **Rationale:** Addresses client requirement for raw transcripts in Agent Assist while ensuring only redacted PII flows to Conversation Insights. The multi-turn context in `main_service` improves redaction accuracy.
+    *   **Implications:** Requires robust "end of call" detection, efficient temporary storage (Redis for context, Firestore for aggregation), and careful handling of transcript ordering for Insights API.
 2025-06-03 01:58:18 - **Command Compatibility Pattern:** All CLI commands generated for execution must be compatible with Windows PowerShell and CMD. This means avoiding multi-line commands or characters that are not interpreted correctly by these shells, and properly escaping special characters (e.g., double quotes within JSON payloads).
 2025-06-03 02:00:05 - **Complex Payload Handling Pattern:** For `curl` commands involving complex JSON payloads, create a temporary `.json` file containing the payload. Use `curl -d @filename.json` to send the content, which is more robust across different shell environments (e.g., Windows PowerShell/CMD) than inline escaping.
 2025-06-03 02:05:54 - **Windows `curl` File Payload Workaround:** When using `curl.exe` with file-based payloads (`-d @filename.json`) on Windows, especially in PowerShell, wrap the `curl` command within `cmd /c "..."` to ensure correct interpretation of the `@` symbol and prevent PowerShell's splatting operator interference.

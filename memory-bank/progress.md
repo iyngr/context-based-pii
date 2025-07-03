@@ -7,60 +7,27 @@ This file tracks the project's progress using a task list format.
 
 ## Completed Tasks
 
-*   Modified `main_service/main.py` to consolidate DLP rule sets and prevent exceeding the API limit of 10 rule sets per request.
-*   Define the "end of call" signal mechanism.
-*   Design the data structure for storing raw transcripts in `subscriber_service`.
-*   Research Google Cloud Conversation Insights API for transcript ingestion requirements.
-*   Develop a new service or enhance `subscriber_service` for post-call redaction and Insights API calls.
-*   Implemented `transcript_aggregator_service` including architecture, Pub/Sub handlers, Firestore integration, CCAI integration, logging, and error handling.
-*   Populated `Dockerfile` and `requirements.txt` for `transcript_aggregator_service`.
-*   Outlined manual steps for GCP resource creation for `transcript_aggregator_service` (Pub/Sub subscriptions, Firestore instance, service account, IAM permissions).
-*   Resolved all outstanding errors (`Location Mismatch` and `AlreadyExists`) in `transcript_aggregator_service`.
-*   Resolved `400 InvalidArgument` error in `transcript_aggregator_service`.
+*   Implemented a multi-service pipeline for PII redaction and Google Cloud Conversation Insights integration.
+*   Defined the "end of call" signal mechanism using CCAI lifecycle notifications.
+*   Designed and implemented data structures for storing conversation context in Redis (`main_service`) and aggregating utterances in Firestore (`transcript_aggregator_service`).
+*   Researched and implemented Google Cloud Conversation Insights API for transcript ingestion, including JSONL format and explicit participant data.
+*   Developed and deployed `ccai_insights_function` for dedicated Conversation Insights ingestion.
+*   Implemented `transcript_aggregator_service`, including its architecture, Pub/Sub handlers, Firestore integration, CCAI integration, logging, and error handling.
+*   Populated `Dockerfile` and `requirements.txt` for all services (`main_service`, `subscriber_service`, `transcript_aggregator_service`, `ccai_insights_function`).
+*   Resolved various deployment and runtime errors across services, including `Location Mismatch`, `AlreadyExists`, `InvalidArgument`, `gunicorn: not found`, and `LRO Unexpected State`.
 *   Enhanced DLP template handling and error reporting in `main_service`.
-*   Refactored `call_dlp_for_redaction` to use `GOOGLE_CLOUD_PROJECT` environment variable.
-*   Resolved "project_id is not defined" errors in `main_service/main.py`.
-*   Resolved "Invalid built-in info type name" error for custom info types in `main_service/main.py`.
-*   Added detailed logging to `ccai_insights_function/main.py` to capture more information about LRO failures.
+*   Refactored `call_dlp_for_redaction` in `main_service` to use `GOOGLE_CLOUD_PROJECT` environment variable and correctly handle regional DLP operations.
+*   Resolved "project_id is not defined" and "Invalid built-in info type name" errors in `main_service/main.py` related to DLP configuration.
+*   Successfully configured and deployed CI/CD pipelines for all services using Google Cloud Build, Artifact Registry, and GitHub integration.
+*   Optimized end-to-end test execution by reducing `time.sleep` delays in `e2e_test.py`.
+*   Corrected DLP configuration for custom info types (e.g., `SOCIAL_HANDLE`) in `main_service/dlp_config.yaml` to ensure proper redaction and likelihood boosting.
 
 ## Current Tasks
 
-*   Deploy the updated `ccai_insights_function` to Google Cloud.
-*   Update `productContext.md` with new client requirements.
-*   Update `decisionLog.md` with the architectural decision for post-call redaction.
-*   Update `activeContext.md` with current focus and open questions.
-*   Verify DLP template existence and permissions in GCP (if the error persists).
-*   Instructing user to verify and grant necessary IAM permissions for the `main_service` service account to access DLP templates.
-*   Investigating DLP template access permissions for the `main_service` Cloud Run service account.
+*   None currently identified.
 
 ## Next Steps
 
-*   Configure Pub/Sub push subscriptions for `transcript_aggregator_service`.
-*   Implement monitoring and alerting for `transcript_aggregator_service`.
-[2025-06-15 20:21:51] - Successfully deployed `transcript_aggregator_service` to Google Cloud Run with min-instances=0 and max-instances=1.
-2025-06-03 02:20:45 - **Updated `main_service` and Redeployed:** The `main_service/main.py` logic for DLP redaction has been refined to ensure comprehensive PII scanning even when a specific PII type is expected. The Docker image has been rebuilt and pushed to GCR, and the Cloud Run service is ready for re-testing.
-2025-06-03 02:23:38 - **Image Naming Convention Update:** Adopting `context-manager-service-image` for GCR image tagging and deployment to align with existing repository names.
-2025-06-03 02:40:11 - **Cloud Run Service Name Correction:** Decided to redeploy to the existing `context-manager` Cloud Run service instead of creating a new `context-manager-service` instance, to maintain a cleaner deployment environment.
-2025-06-03 03:05:31 - **Next Steps for End-to-End Testing:** Configure Google Cloud Secret Manager secrets for `subscriber_service` (`SUBSCRIBER_CONTEXT_MANAGER_URL`, `SUBSCRIBER_REDACTED_TOPIC_NAME`, `SUBSCRIBER_GCP_PROJECT_ID`) and redeploy the `transcript-processor` Cloud Function.
-[2025-06-15 03:58:40] - Debugged and resolved `SUBSCRIBER_CONTEXT_MANAGER_URL` secret loading issue in `subscriber-service`. Confirmed end-to-end flow is working.
-[2025-06-15 03:47:28] - Storing the monitoring and alerting outline in `docs/resource-monitoring.md`.
-[2025-06-16 02:39:25] - **Deployment Commands for Services:**
-*   **`transcript_aggregator_service`**:
-    ```bash
-    cd transcript_aggregator_service && gcloud run deploy transcript-aggregator-service --source . --region us-central1 --project YOUR_GCP_PROJECT_ID --allow-unauthenticated --set-env-vars CONTEXT_TTL_SECONDS=3600 --set-env-vars GOOGLE_CLOUD_PROJECT=PROJECT_ID --set-env-vars AGGREGATED_TRANSCRIPTS_BUCKET=pg-transcript --min-instances=0 --max-instances=1
-    ```
-*   **`main_service` (Context Manager Service)**:
-    ```bash
-    cd main_service && gcloud run deploy context-manager --source . --region us-central1 --project PROJECT_ID --allow-unauthenticated --set-env-vars GOOGLE_CLOUD_PROJECT=PROJECT_ID --set-env-vars CONTEXT_TTL_SECONDS=90 --min-instances=0 --max-instances=1
-    ```
-*   **`subscriber_service`**:
-    ```bash
-    cd subscriber_service && gcloud run deploy subscriber-service --source . --region us-central1 --project PROJECT_ID --allow-unauthenticated --set-env-vars GCP_PROJECT_ID_FOR_SECRETS=PROJECT_ID --min-instances=0 --max-instances=1
-    ```
-2025-06-22 14:13:30 - Completed CI/CD setup: Created Artifact Registry repo, implemented service-specific Cloud Build files and triggers, connected GitHub, and configured service account permissions. Resolved build and deployment permission errors.
-2025-06-30 02:01:25 - **Test Optimization:** Reduced `time.sleep` delays in `e2e_test.py` to speed up end-to-end test execution. The per-utterance delay was reduced from 0.1s to 0.01s, and the post-utterance publication delay was reduced from 15s to 5s.
-2025-06-30 02:13:01 - **LRO Unexpected State Error:** Encountered `GoogleAPICallError: None Unexpected state: Long-running operation had neither response nor error set` in `ccai_insights_function/main.py` at line 65. This is due to a redundant `upload_operation.result()` call after a manual polling loop.
-**Fix:** Remove the `upload_operation.result()` call at line 65, as the polling loop already ensures the `operation` object is in its final state before proceeding to error/response handling.
-2025-06-30 02:23:49 - **Fixing Transcript Format:** Modifying `transcript_aggregator_service/main.py` to write aggregated transcripts to GCS in line-delimited JSON (JSONL) format, as required by Google Cloud Conversation Insights.
-2025-06-30 02:24:48 - **Adding Explicit Participant Data:** Modifying `ccai_insights_function/main.py` to explicitly define `AGENT` and `END_USER` participants in the `Conversation` object for more robust ingestion into Google Cloud Conversation Insights.
-[2025-06-30 02:44:51] - **Investigation Result:** The `participants` field, which caused the `Unknown field for Conversation` error, was not found in the current `ccai_insights_function/main.py` file. This suggests the error might have originated from a previous, deployed version of the code.
+*   None currently identified.
+
+2025-07-03 15:40:00 - Consolidated and updated progress based on recent source code analysis and chat history.

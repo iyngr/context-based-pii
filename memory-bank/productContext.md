@@ -25,8 +25,7 @@ This file provides a high-level overview of the project and the expected product
 *   A Pub/Sub-driven architecture for real-time transcript processing.
 *   `main_service`: Handles PII redaction and conversation context management using Redis.
 *   `subscriber_service`: Cloud Function triggered by raw transcript Pub/Sub messages, calls `main_service`, and publishes redacted transcripts.
-*   `transcript_aggregator_service`: Subscribes to redacted transcripts, aggregates conversations using Firestore, detects end-of-call via CCAI lifecycle events, and ingests full transcripts into Google Cloud Conversation Insights.
-*   Direct API integration with Google Cloud Conversation Insights.
+*   `transcript_aggregator_service`: Subscribes to redacted transcripts, aggregates conversations using Firestore, detects end-of-call via CCAI lifecycle events, and prepares full transcripts for ingestion by `ccai_insights_function`.
 2025-06-03 01:10:20 - Updated project goal, key features, and overall architecture based on new client requirements for PII handling.
 2025-06-03 01:53:25 - **Deployment Strategy Update:** Both `main_service` and `subscriber_service` are intended to be deployed to Google Cloud Run or Cloud Functions. Redis (Valkey) is configured to be accessible only via Serverless VPC Access, restricting direct access from outside the GCP environment.
 2025-06-22 14:13:11 - Updated with CI/CD setup details, including Artifact Registry, Cloud Build configurations, triggers, and GitHub integration.

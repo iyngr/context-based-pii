@@ -16,12 +16,13 @@ This file records architectural and implementation decisions using a list format
 ## Implementation Details
 
 *
-[2025-06-03 01:11:00] - **Decision:** Implement post-call PII redaction and direct integration with Google Cloud Conversation Insights API, bypassing Agent Assist's built-in "Send to Insights" and "Export conversations to insights" options.
+[2025-06-03 01:11:00] - **Decision:** Implement a multi-service pipeline for PII redaction and Google Cloud Conversation Insights integration, bypassing Agent Assist's built-in ingestion.
 **Rationale:** Client requirement to allow raw transcripts for Agent Assist PII verification during the call, while ensuring only redacted PII flows to Conversation Insights for analytics. This necessitates a custom redaction and ingestion pipeline.
 **Implementation Details:**
-    *   The `subscriber_service` will be enhanced to temporarily store raw utterances for a conversation.
-    *   Upon call termination (signal to be determined), the aggregated raw transcript will be sent to the `main_service` for comprehensive PII redaction.
-    *   A new component within the `subscriber_service` (or a new dedicated service) will be responsible for calling the Google Cloud Conversation Insights API with the fully redacted and chronologically ordered transcript.
+    *   `subscriber_service`: Receives raw transcripts, calls `main_service` for redaction, and publishes redacted utterances.
+    *   `main_service`: Performs PII redaction using Google Cloud DLP and manages multi-turn context (expected PII types) in Redis.
+    *   `transcript_aggregator_service`: Aggregates redacted utterances into full conversations using Firestore, detects end-of-call via CCAI lifecycle events, and prepares transcripts for ingestion.
+    *   `ccai_insights_function`: A dedicated service responsible for ingesting aggregated transcripts into Google Cloud Conversation Insights.
 2025-06-03 01:53:37 - **Decision:** Deploy `main_service` and `subscriber_service` to Google Cloud Run/Functions.
 **Rationale:** This deployment strategy enables access to Redis (Valkey) from the Cloud Run environment.
 **Implementation Details:**
