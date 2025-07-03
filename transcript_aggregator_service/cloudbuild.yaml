@@ -24,9 +24,26 @@ steps:
     - '--service-account'
     - '${_AGGREGATOR_SA}'
     - '--set-env-vars'
-    - 'CONTEXT_TTL_SECONDS=3600,GOOGLE_CLOUD_PROJECT=${PROJECT_ID},AGGREGATED_TRANSCRIPTS_BUCKET=${_AGGREGATED_BUCKET}'
+    - >-
+      CONTEXT_TTL_SECONDS=3600,
+      GOOGLE_CLOUD_PROJECT=${PROJECT_ID},
+      AGGREGATED_TRANSCRIPTS_BUCKET=${_AGGREGATED_BUCKET},
+      UTTERANCE_WINDOW_SIZE=5,
+      POLLING_INTERVAL_SECONDS=5
     - '--min-instances=0'
     - '--max-instances=1'
+  secretEnv:
+    - 'MAIN_SERVICE_URL'
+    - 'REDIS_HOST'
+    - 'REDIS_PORT'
+availableSecrets:
+  secretManager:
+  - versionName: projects/${PROJECT_ID}/secrets/CONTEXT_MANAGER_URL/versions/latest
+    env: 'MAIN_SERVICE_URL'
+  - versionName: projects/${PROJECT_ID}/secrets/CONTEXT_MANAGER_REDIS_HOST/versions/latest
+    env: 'REDIS_HOST'
+  - versionName: projects/${PROJECT_ID}/secrets/CONTEXT_MANAGER_REDIS_PORT/versions/latest
+    env: 'REDIS_PORT'
 
 substitutions:
   _GAR_LOCATION: 'us-central1'

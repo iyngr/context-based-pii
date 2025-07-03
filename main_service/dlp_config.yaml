@@ -1,5 +1,5 @@
 dlp_location: "us-central1"
-dlp_templates: 
+dlp_templates:
   inspect_template_name: "projects/${PROJECT_ID}/locations/us-central1/inspectTemplates/identify"
   deidentify_template_name: "projects/${PROJECT_ID}/locations/us-central1/deidentifyTemplates/deidentify"
 context_keywords:
@@ -88,6 +88,26 @@ context_keywords:
   - bcc
   - laser visa
 inspect_config:
+  info_types:
+  - name: EMAIL_ADDRESS
+  - name: PHONE_NUMBER
+  - name: CREDIT_CARD_NUMBER
+  - name: US_PASSPORT
+  - name: PERSON_NAME
+  - name: STREET_ADDRESS
+  - name: US_SOCIAL_SECURITY_NUMBER
+  - name: FINANCIAL_ACCOUNT_NUMBER
+  - name: CVV_NUMBER
+  - name: IMEI_HARDWARE_ID
+  - name: US_DRIVERS_LICENSE_NUMBER
+  - name: US_EMPLOYER_IDENTIFICATION_NUMBER
+  - name: US_MEDICARE_BENEFICIARY_ID_NUMBER
+  - name: DOD_ID_NUMBER
+  - name: MAC_ADDRESS
+  - name: IP_ADDRESS
+  - name: SWIFT_CODE
+  - name: IBAN_CODE
+  - name: DATE_OF_BIRTH
   custom_info_types:
   - info_type:
       name: ALIEN_REGISTRATION_NUMBER
@@ -96,168 +116,32 @@ inspect_config:
   - info_type:
       name: SOCIAL_HANDLE
     regex:
-      pattern: "@[a-zA-Z][a-zA-Z0-9_.-]{1,14}\\b"
+      pattern: "@[a-zA-Z][a-zA-Z0-9_.-]{1,14}\b"
   - info_type:
       name: BORDER_CROSSING_CARD
     regex:
       pattern: "\\b[a-zA-Z]\\d{7}\\b"
   rule_set:
   - info_types:
-    - name: EMAIL_ADDRESS
-    - name: PHONE_NUMBER
-    - name: CREDIT_CARD_NUMBER
-    - name: US_PASSPORT
-    - name: PERSON_NAME
-    - name: STREET_ADDRESS
     - name: US_SOCIAL_SECURITY_NUMBER
-    - name: FINANCIAL_ACCOUNT_NUMBER
-    - name: CVV_NUMBER
-    - name: IMEI_HARDWARE_ID
+    - name: US_PASSPORT
     - name: US_DRIVERS_LICENSE_NUMBER
     - name: US_EMPLOYER_IDENTIFICATION_NUMBER
     - name: US_MEDICARE_BENEFICIARY_ID_NUMBER
     - name: DOD_ID_NUMBER
-    - name: MAC_ADDRESS
-    - name: IP_ADDRESS
-    - name: SWIFT_CODE
-    - name: IBAN_CODE
     - name: ALIEN_REGISTRATION_NUMBER
-    - name: SOCIAL_HANDLE
     - name: BORDER_CROSSING_CARD
     rules:
     - hotword_rule:
         hotword_regex:
-          pattern: "(?i)(social security|ssn)"
+          pattern: "(?i)(social security|ssn|passport|driver's license|drivers license|employer identification number|ein|medicare beneficiary id|mbi|dod id|department of defense id|military id|alien registration number|a number|border crossing card|bcc|laser visa)"
         proximity:
           window_before: 50
         likelihood_adjustment:
           fixed_likelihood: LIKELY
-    - hotword_rule:
-        hotword_regex:
-          pattern: "(?i)(credit card|card number)"
-        proximity:
-          window_before: 50
-        likelihood_adjustment:
-          fixed_likelihood: LIKELY
-    - hotword_rule:
-        hotword_regex:
-          pattern: "(?i)(phone number|your number|contact number)"
-        proximity:
-          window_before: 50
-        likelihood_adjustment:
-          fixed_likelihood: LIKELY
-    - hotword_rule:
-        hotword_regex:
-          pattern: "(?i)(email address|your email)"
-        proximity:
-          window_before: 50
-        likelihood_adjustment:
-          fixed_likelihood: LIKELY
-    - hotword_rule:
-        hotword_regex:
-          pattern: "(?i)(date of birth|dob)"
-        proximity:
-          window_before: 50
-        likelihood_adjustment:
-          fixed_likelihood: LIKELY
-    - hotword_rule:
-        hotword_regex:
-          pattern: "(?i)(address|street|home address|mailing address|boulevard|avenue|road|drive|lane|way|live)"
-        proximity:
-          window_before: 50
-        likelihood_adjustment:
-          fixed_likelihood: LIKELY
-    - hotword_rule:
-        hotword_regex:
-          pattern: "(?i)(account number|member id)"
-        proximity:
-          window_before: 50
-        likelihood_adjustment:
-          fixed_likelihood: LIKELY
-    - hotword_rule:
-        hotword_regex:
-          pattern: "(?i)(full name|your name)"
-        proximity:
-          window_before: 50
-        likelihood_adjustment:
-          fixed_likelihood: LIKELY
-    - hotword_rule:
-        hotword_regex:
-          pattern: "(?i)(passport number|passport no)"
-        proximity:
-          window_before: 50
-        likelihood_adjustment:
-          fixed_likelihood: LIKELY
-    - hotword_rule:
-        hotword_regex:
-          pattern: "(?i)(cvv|card verification value)"
-        proximity:
-          window_before: 50
-        likelihood_adjustment:
-          fixed_likelihood: LIKELY
-    - hotword_rule:
-        hotword_regex:
-          pattern: "(?i)(imei|hardware id)"
-        proximity:
-          window_before: 50
-        likelihood_adjustment:
-          fixed_likelihood: LIKELY
-    - hotword_rule:
-        hotword_regex:
-          pattern: "(?i)(driver's license|drivers license number)"
-        proximity:
-          window_before: 50
-        likelihood_adjustment:
-          fixed_likelihood: LIKELY
-    - hotword_rule:
-        hotword_regex:
-          pattern: "(?i)(employer identification number|ein)"
-        proximity:
-          window_before: 50
-        likelihood_adjustment:
-          fixed_likelihood: LIKELY
-    - hotword_rule:
-        hotword_regex:
-          pattern: "(?i)(medicare beneficiary id|mbi)"
-        proximity:
-          window_before: 50
-        likelihood_adjustment:
-          fixed_likelihood: LIKELY
-    - hotword_rule:
-        hotword_regex:
-          pattern: "(?i)(dod id|department of defense id|military id|dod number)"
-        proximity:
-          window_before: 50
-        likelihood_adjustment:
-          fixed_likelihood: LIKELY
-    - hotword_rule:
-        hotword_regex:
-          pattern: "(?i)(mac address|physical address)"
-        proximity:
-          window_before: 50
-        likelihood_adjustment:
-          fixed_likelihood: LIKELY
-    - hotword_rule:
-        hotword_regex:
-          pattern: "(?i)(ip address|internet protocol address)"
-        proximity:
-          window_before: 50
-        likelihood_adjustment:
-          fixed_likelihood: LIKELY
-    - hotword_rule:
-        hotword_regex:
-          pattern: "(?i)(swift code|bic code)"
-        proximity:
-          window_before: 50
-        likelihood_adjustment:
-          fixed_likelihood: LIKELY
-    - hotword_rule:
-        hotword_regex:
-          pattern: "(?i)(iban|international bank account number)"
-        proximity:
-          window_before: 50
-        likelihood_adjustment:
-          fixed_likelihood: LIKELY
+  - info_types:
+    - name: SOCIAL_HANDLE
+    rules:
     - hotword_rule:
         hotword_regex:
           pattern: "(?i)(social handle|username|profile name|account name|tag|handle)"
@@ -265,16 +149,42 @@ inspect_config:
           window_before: 50
         likelihood_adjustment:
           fixed_likelihood: LIKELY
+  - info_types:
+    - name: CREDIT_CARD_NUMBER
+    - name: FINANCIAL_ACCOUNT_NUMBER
+    - name: CVV_NUMBER
+    - name: SWIFT_CODE
+    - name: IBAN_CODE
+    rules:
     - hotword_rule:
         hotword_regex:
-          pattern: "(?i)(alien registration number|a number|alien number)"
+          pattern: "(?i)(credit card|card number|account number|member id|cvv|card verification value|swift code|bic code|iban|international bank account number)"
         proximity:
           window_before: 50
         likelihood_adjustment:
           fixed_likelihood: LIKELY
+  - info_types:
+    - name: PHONE_NUMBER
+    - name: EMAIL_ADDRESS
+    - name: STREET_ADDRESS
+    - name: PERSON_NAME
+    - name: DATE_OF_BIRTH
+    rules:
     - hotword_rule:
         hotword_regex:
-          pattern: "(?i)(border crossing card|bcc|laser visa)"
+          pattern: "(?i)(phone number|your number|contact number|email address|your email|address|street|home address|mailing address|boulevard|avenue|road|drive|lane|way|live|full name|your name|date of birth|dob)"
+        proximity:
+          window_before: 50
+        likelihood_adjustment:
+          fixed_likelihood: LIKELY
+  - info_types:
+    - name: IMEI_HARDWARE_ID
+    - name: MAC_ADDRESS
+    - name: IP_ADDRESS
+    rules:
+    - hotword_rule:
+        hotword_regex:
+          pattern: "(?i)(imei|hardware id|mac address|physical address|ip address|internet protocol address)"
         proximity:
           window_before: 50
         likelihood_adjustment:

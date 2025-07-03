@@ -1,13 +1,39 @@
 import yaml
 import os
+import subprocess # New import
+import logging # New import
 from google.cloud import dlp_v2
 
-def get_project_id():
-    """Retrieves the Google Cloud Project ID from the environment variable."""
-    project_id = os.environ.get("PROJECT_ID")
-    if not project_id:
-        raise ValueError("PROJECT_ID environment variable not set.")
-    return project_id
+# Configure logging for the script
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s %(levelname)s %(name)s %(module)s %(funcName)s %(lineno)d : %(message)s')
+logger = logging.getLogger(__name__)
+
+def get_gcp_project_id():
+    """Gets the current GCP project ID from the gcloud configuration."""
+    try:
+        command = ['gcloud', 'config', 'get-value', 'project']
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            check=True,
+            shell=True  # Use shell=True for consistency and Windows compatibility
+        )
+        project_id = result.stdout.strip()
+        if not project_id:
+            raise ValueError("gcloud config returned an empty project ID. Please run 'gcloud config set project YOUR_PROJECT_ID'.")
+        logger.info(f"Successfully retrieved GCP Project ID via gcloud: {project_id}")
+        return project_id
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        logger.error(
+            "Failed to get GCP Project ID using 'gcloud config get-value project'. "
+            "Please ensure the gcloud CLI is installed, you are authenticated ('gcloud auth login'), "
+            "and a default project is set ('gcloud config set project YOUR_PROJECT_ID')."
+        )
+        if isinstance(e, subprocess.CalledProcessError):
+            logger.error(f"gcloud stderr: {e.stderr}")
+        raise SystemExit("Could not determine GCP Project ID. Aborting test.") from e
 
 def create_or_update_dlp_templates(project_id, config_file):
     """
@@ -52,6 +78,6 @@ def create_or_update_dlp_templates(project_id, config_file):
         client.create_deidentify_template(parent=parent, deidentify_template_id=deidentify_template_id, deidentify_template=template)
 
 if __name__ == "__main__":
-    project_id = get_project_id()
+    project_id = get_gcp_project_id()
     config_file = "main_service/dlp_config.yaml"
     create_or_update_dlp_templates(project_id, config_file)
