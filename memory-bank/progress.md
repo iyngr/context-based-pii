@@ -7,6 +7,7 @@ This file tracks the project's progress using a task list format.
 
 ## Completed Tasks
 
+*   Modified `main_service/main.py` to consolidate DLP rule sets and prevent exceeding the API limit of 10 rule sets per request.
 *   Define the "end of call" signal mechanism.
 *   Design the data structure for storing raw transcripts in `subscriber_service`.
 *   Research Google Cloud Conversation Insights API for transcript ingestion requirements.
