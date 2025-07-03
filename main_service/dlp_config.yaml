@@ -113,14 +113,17 @@ inspect_config:
       name: ALIEN_REGISTRATION_NUMBER
     regex:
       pattern: \b[Aa]\d{7,9}\b
+    likelihood: VERY_LIKELY
   - info_type:
       name: SOCIAL_HANDLE
     regex:
-      pattern: "@[a-zA-Z][a-zA-Z0-9_.-]{1,14}\b"
+      pattern: "@[a-zA-Z][a-zA-Z0-9_.-]{1,14}\\b"
+    likelihood: VERY_LIKELY
   - info_type:
       name: BORDER_CROSSING_CARD
     regex:
       pattern: "\\b[a-zA-Z]\\d{7}\\b"
+    likelihood: VERY_LIKELY
   rule_set:
   - info_types:
     - name: US_SOCIAL_SECURITY_NUMBER
@@ -135,16 +138,6 @@ inspect_config:
     - hotword_rule:
         hotword_regex:
           pattern: "(?i)(social security|ssn|passport|driver's license|drivers license|employer identification number|ein|medicare beneficiary id|mbi|dod id|department of defense id|military id|alien registration number|a number|border crossing card|bcc|laser visa)"
-        proximity:
-          window_before: 50
-        likelihood_adjustment:
-          fixed_likelihood: LIKELY
-  - info_types:
-    - name: SOCIAL_HANDLE
-    rules:
-    - hotword_rule:
-        hotword_regex:
-          pattern: "(?i)(social handle|username|profile name|account name|tag|handle)"
         proximity:
           window_before: 50
         likelihood_adjustment:

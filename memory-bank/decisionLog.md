@@ -241,3 +241,19 @@ The problem was multi-faceted:
 **Rationale:** The logic to find custom info type definitions was flawed. It was looking for the `custom_info_types` key at the top level of the `DLP_CONFIG` dictionary, when it is actually nested inside the `inspect_config` key. This caused the code to misidentify custom info types as built-in types, leading to an invalid DLP API request when trying to apply a likelihood-boosting rule.
 **Implementation Details:**
     *   Modified `main_service/main.py` at line 316 to correctly look for the `custom_info_types` list within `DLP_CONFIG.get("inspect_config", {}).get("custom_info_types", [])`. This ensures custom info types are correctly identified and the likelihood-boosting `rule_set` is not applied to them.
+[2025-07-03 11:29:16] - **Decision:** Corrected DLP configuration for `SOCIAL_HANDLE` in `main_service/dlp_config.yaml` to ensure proper redaction.
+**Rationale:** The `SOCIAL_HANDLE` custom info type was not being redacted because its likelihood was not being boosted correctly. The previous `rule_set` for `SOCIAL_HANDLE` in `dlp_config.yaml` was either causing an API error or being ignored by the DLP API due to incorrect configuration for a custom info type. Google Cloud DLP expects `likelihood_adjustment` for custom info types to be defined directly within the `custom_info_type` definition itself.
+**Implementation Details:**
+    *   Removed the `rule_set` specifically for `SOCIAL_HANDLE` from `main_service/dlp_config.yaml`.
+    *   Added `likelihood: VERY_LIKELY` directly to the `SOCIAL_HANDLE`'s `custom_info_type` definition within `main_service/dlp_config.yaml`. This ensures the DLP API correctly applies the likelihood boost for this custom info type.
+[2025-07-03 11:30:11] - **Decision:** Added `likelihood: VERY_LIKELY` to all custom info types in `main_service/dlp_config.yaml` that were missing it.
+**Rationale:** To ensure consistent and effective PII redaction across all custom info types, as the Google Cloud DLP API expects likelihood to be defined directly within the `custom_info_type` definition for proper detection boosting.
+**Implementation Details:**
+    *   Added `likelihood: VERY_LIKELY` to the `ALIEN_REGISTRATION_NUMBER` custom info type definition.
+    *   Added `likelihood: VERY_LIKELY` to the `BORDER_CROSSING_CARD` custom info type definition.
+[2025-07-03 12:21:51] - **Decision:** Resolved persistent `SOCIAL_HANDLE` redaction issues in both console tests and the application's multi-turn context-based redaction flow.
+**Rationale:** The `SOCIAL_HANDLE` custom info type was not consistently redacting due to incorrect regex escaping in `dlp_config.yaml` and insufficient likelihood configuration in the remote DLP `inspectTemplates/identify` template. The `\b` word boundary was not being recognized, and the console template needed direct updates.
+**Implementation Details:**
+    *   Modified the `SOCIAL_HANDLE` regex pattern in `main_service/dlp_config.yaml` to correctly escape the word boundary: `@[a-zA-Z][a-zA-Z0-9_.-]{1,14}\\b`.
+    *   Updated the `inspectTemplates/identify` template in the Google Cloud Console to ensure the `SOCIAL_HANDLE` custom info type has `likelihood: VERY_LIKELY` and its regex is correctly configured (removing any trailing `|` and ensuring `\b` is interpreted correctly by the console).
+    *   These changes ensure that the multi-turn context-based redaction system now reliably redacts social media handles, leveraging both the dynamic context from agent utterances and the robust detection capabilities of the updated DLP templates.

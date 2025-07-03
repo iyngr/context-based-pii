@@ -1,5 +1,6 @@
 {
     "yaml.schemas": {
-        "https://json.schemastore.org/cloudbuild.json": "file:///c%3A/Users/iyngr/Desktop/context_manager_service/cloudbuild-dlp-update.yaml"
+        "https://json.schemastore.org/cloudbuild.json": "file:///c%3A/Users/iyngr/Desktop/context_manager_service/cloudbuild-dlp-update.yaml",
+        "https://www.schemastore.org/yamllint.json": "file:///c%3A/Users/iyngr/Downloads/context-based-pii/main_service/dlp_config.yaml"
     }
 }
