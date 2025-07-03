@@ -34,9 +34,6 @@ context_keywords:
   FINANCIAL_ACCOUNT_NUMBER:
   - account number
   - member id
-  PERSON_NAME:
-  - full name
-  - your name
   US_PASSPORT:
   - passport number
   - passport no
@@ -104,7 +101,6 @@ inspect_config:
   - name: PHONE_NUMBER
   - name: CREDIT_CARD_NUMBER
   - name: US_PASSPORT
-  - name: PERSON_NAME
   - name: STREET_ADDRESS
   - name: US_SOCIAL_SECURITY_NUMBER
   - name: FINANCIAL_ACCOUNT_NUMBER
@@ -175,7 +171,6 @@ inspect_config:
     - name: PHONE_NUMBER
     - name: EMAIL_ADDRESS
     - name: STREET_ADDRESS
-    - name: PERSON_NAME
     - name: DATE_OF_BIRTH
     rules:
     - hotword_rule:
