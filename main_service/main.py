@@ -53,6 +53,7 @@ def get_secret(secret_id, version_id="latest", project_id=None):
         logger.error(f"An unexpected error occurred while fetching secret {secret_id} (version: {version_id}): {str(e)}")
         return None
 
+# Minor change to trigger Cloud Build
 app = Flask(__name__)
 
 # Configure standard logging
