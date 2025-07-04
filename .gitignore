@@ -21,3 +21,4 @@ test.py
 dlp_redaction_test.py
 .gemini/extensions/gemini-extension.json
 .gemini/settings.json
+node_modules/

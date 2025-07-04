@@ -5,3 +5,4 @@ gunicorn
 google-cloud-secret-manager
 PyYAML
 google-api-core
+google-cloud-contact-center-insights

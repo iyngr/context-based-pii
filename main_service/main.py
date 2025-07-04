@@ -5,7 +5,10 @@ import redis
 import json
 import time
 import yaml
+import uuid # New import for generating job IDs
 from google.cloud import dlp_v2
+from google.cloud import pubsub_v1 # New import for Pub/Sub publishing
+from google.cloud import contact_center_insights_v1 # New import for CCAI Insights API
 from google.cloud.secretmanager import SecretManagerServiceClient
 from google.api_core.exceptions import NotFound, PermissionDenied, GoogleAPICallError, MethodNotImplemented
 
@@ -139,6 +142,11 @@ except Exception as e: # Catch any other unexpected errors during initialization
     # redis_client remains None
     # Consider if the app should exit(1) here if Redis is absolutely critical for startup
 
+# Initialize Pub/Sub publisher client
+publisher_client = pubsub_v1.PublisherClient()
+RAW_TRANSCRIPTS_TOPIC = 'raw-transcripts'
+AA_LIFECYCLE_TOPIC = 'aa-lifecycle-event-notification'
+
 # Load DLP configuration from dlp_config.yaml
 DLP_CONFIG = {}
 try:
@@ -168,11 +176,110 @@ except Exception as e:
     logger.error(f"Could not initialize DLP client. Error: {str(e)}")
     # dlp_client remains None
 
+# Initialize CCAI Conversation Insights client
+ccai_insights_client = None
+try:
+    logger.info("Initializing global CCAI Conversation Insights client.")
+    ccai_insights_client = contact_center_insights_v1.ContactCenterInsightsClient()
+    logger.info("Successfully initialized CCAI Conversation Insights client.")
+except Exception as e:
+    logger.error(f"Could not initialize CCAI Conversation Insights client. Error: {str(e)}")
+    # ccai_insights_client remains None
+
 
 @app.route('/')
 def hello_world():
     """A simple hello world endpoint."""
     return "Hello, World! This is the Context Manager Service."
+
+@app.route('/initiate-redaction', methods=['POST'])
+def initiate_redaction():
+    """
+    Receives a conversation transcript from the frontend,
+    initiates the redaction process by publishing to Pub/Sub,
+    and returns a jobId.
+    """
+    data = request.get_json()
+    if not data or 'transcript' not in data or 'transcript_segments' not in data['transcript']:
+        logger.error("Invalid request for /initiate-redaction: Missing 'transcript' or 'transcript_segments'.")
+        return jsonify({"error": "Missing transcript data"}), 400
+
+    transcript_segments = data['transcript']['transcript_segments']
+    conversation_id = str(uuid.uuid4()) # Generate a unique conversation ID (jobId)
+    
+    # Get current time for start_time and end_time
+    from datetime import datetime, timezone
+    current_time = datetime.now(timezone.utc).isoformat(timespec='seconds') + 'Z'
+
+    # 1. Send 'conversation_started' message to aa-lifecycle-event-notification topic
+    lifecycle_topic_path = publisher_client.topic_path(GCP_PROJECT_ID_FOR_SECRETS, AA_LIFECYCLE_TOPIC)
+    start_message_payload = json.dumps({
+        "conversation_id": conversation_id,
+        "event_type": "conversation_started",
+        "start_time": current_time
+    })
+    try:
+        future = publisher_client.publish(lifecycle_topic_path, start_message_payload.encode("utf-8"))
+        future.result() # Wait for publish to complete
+        logger.info(f"Published 'conversation_started' for {conversation_id}.")
+    except Exception as e:
+        logger.error(f"Failed to publish 'conversation_started' message for {conversation_id}: {str(e)}")
+        return jsonify({"error": "Failed to initiate redaction process"}), 500
+
+    # 2. Publish individual raw transcript messages to raw-transcripts topic
+    raw_topic_path = publisher_client.topic_path(GCP_PROJECT_ID_FOR_SECRETS, RAW_TRANSCRIPTS_TOPIC)
+    publish_futures = []
+    for i, segment in enumerate(transcript_segments):
+        entry_payload = {
+            "conversation_id": conversation_id,
+            "original_entry_index": i,
+            "participant_role": segment.get('speaker', 'UNKNOWN').upper(), # Ensure uppercase for consistency
+            "text": segment.get('text', ''),
+            "user_id": segment.get('user_id', 'frontend_user'), # Placeholder user_id
+            "start_timestamp_usec": int(time.time() * 1_000_000) # Generate timestamp
+        }
+        message_payload = json.dumps(entry_payload)
+        future = publisher_client.publish(raw_topic_path, message_payload.encode("utf-8"))
+        publish_futures.append(future)
+    
+    # Wait for all utterances to publish
+    try:
+        for i, future in enumerate(publish_futures):
+            future.result()
+            logger.info(f"Published utterance {i+1}/{len(transcript_segments)} for '{conversation_id}'.")
+    except Exception as e:
+        logger.error(f"Failed to publish all utterances for {conversation_id}: {str(e)}")
+        # Depending on desired behavior, you might want to clean up or mark as failed in Redis here
+        return jsonify({"error": "Failed to publish all conversation segments"}), 500
+
+    # 3. Send 'conversation_ended' message
+    end_message_payload = json.dumps({
+        "conversation_id": conversation_id,
+        "event_type": "conversation_ended",
+        "end_time": current_time,
+        "total_utterance_count": len(transcript_segments)
+    })
+    try:
+        future = publisher_client.publish(lifecycle_topic_path, end_message_payload.encode("utf-8"))
+        future.result()
+        logger.info(f"Published 'conversation_ended' for {conversation_id}.")
+    except Exception as e:
+        logger.error(f"Failed to publish 'conversation_ended' message for {conversation_id}: {str(e)}")
+        return jsonify({"error": "Failed to finalize redaction process initiation"}), 500
+
+    # Store initial job status in Redis
+    if redis_client:
+        try:
+            redis_client.set(f"job_status:{conversation_id}", "PROCESSING")
+            redis_client.set(f"job_conversation:{conversation_id}", json.dumps({"transcript": {"transcript_segments": []}})) # Initialize empty conversation
+            logger.info(f"Initialized job status for {conversation_id} in Redis.")
+        except redis.exceptions.RedisError as e:
+            logger.error(f"Redis error during job status initialization for {conversation_id}: {str(e)}")
+            # This is not critical enough to fail the initiation, but log it.
+    else:
+        logger.warning("Redis client not available, job status will not be tracked.")
+
+    return jsonify({"jobId": conversation_id}), 202 # 202 Accepted for asynchronous processing
 
 @app.route('/handle-agent-utterance', methods=['POST'])
 def handle_agent_utterance():
@@ -248,6 +355,75 @@ def handle_customer_utterance():
     redacted_transcript = call_dlp_for_redaction(transcript, retrieved_context)
 
     return jsonify({"redacted_transcript": redacted_transcript, "context_used": retrieved_context is not None}), 200
+
+@app.route('/redaction-status/<job_id>', methods=['GET'])
+def get_redaction_status(job_id):
+    """
+    Retrieves the status and (if available) the redacted conversation
+    for a given job ID from CCAI Conversation Insights.
+    """
+    if not ccai_insights_client:
+        logger.error("CCAI Conversation Insights client not available for /redaction-status.")
+        return jsonify({"error": "CCAI Insights client not available"}), 503
+
+    try:
+        # The jobId from the frontend is the conversation_id in CCAI Insights
+        conversation_name = f"projects/{GCP_PROJECT_ID_FOR_SECRETS}/locations/us-central1/conversations/{job_id}" # Assuming us-central1 location
+
+        request = contact_center_insights_v1.GetConversationRequest(
+            name=conversation_name,
+            view=contact_center_insights_v1.types.ConversationView.FULL
+        )
+
+        try:
+            response = ccai_insights_client.get_conversation(request=request)
+            logger.info(f"Successfully retrieved conversation {job_id} from CCAI Insights.")
+
+            # Map participant IDs to roles
+            participant_map = {
+                participant.id: participant.role.name
+                for participant in response.participants
+            }
+
+            # Extract transcript segments in the desired format for the frontend
+            transcript_segments = []
+            for segment in response.transcript.transcript_segments:
+                speaker = participant_map.get(segment.participant_id, "UNKNOWN")
+                transcript_segments.append({
+                    "speaker": speaker,
+                    "text": segment.text
+                })
+            
+            # Determine status based on whether transcript segments are available
+            # In a real scenario, you might have a more robust way to determine "DONE" vs "PROCESSING"
+            # For now, if we can retrieve the conversation, we assume it's DONE.
+            status = "DONE" if transcript_segments else "PROCESSING"
+
+            return jsonify({
+                "status": status,
+                "conversation": {
+                    "transcript": {
+                        "transcript_segments": transcript_segments
+                    }
+                }
+            }), 200
+
+        except NotFound:
+            logger.info(f"Conversation {job_id} not yet found in CCAI Insights. Still processing or not yet ingested.")
+            return jsonify({"status": "PROCESSING", "message": "Conversation not yet available"}), 200
+        except PermissionDenied as e:
+            logger.error(f"Permission denied to access conversation {job_id} in CCAI Insights: {str(e)}")
+            return jsonify({"status": "FAILED", "error": "Permission denied to access conversation"}), 403
+        except GoogleAPICallError as e:
+            logger.error(f"Google API Call Error when fetching conversation {job_id} from CCAI Insights: {str(e)}")
+            return jsonify({"status": "FAILED", "error": f"CCAI Insights API error: {e.message}"}), 500
+        except Exception as e:
+            logger.error(f"An unexpected error occurred while fetching conversation {job_id} from CCAI Insights: {str(e)}")
+            return jsonify({"status": "FAILED", "error": "An internal server error occurred"}), 500
+
+    except Exception as e:
+        logger.error(f"An unexpected error occurred in get_redaction_status for job {job_id}: {str(e)}")
+        return jsonify({"error": "An internal server error occurred"}), 500
 
 # Placeholder functions - to be implemented
 def extract_expected_pii(transcript: str) -> str | None:
