@@ -6,7 +6,6 @@ import json
 import time
 import yaml
 from google.cloud import dlp_v2
-from google.cloud.dlp_v2 import types # Added this line
 from google.cloud.secretmanager import SecretManagerServiceClient
 from google.api_core.exceptions import NotFound, PermissionDenied, GoogleAPICallError, MethodNotImplemented
 
@@ -54,7 +53,6 @@ def get_secret(secret_id, version_id="latest", project_id=None):
         logger.error(f"An unexpected error occurred while fetching secret {secret_id} (version: {version_id}): {str(e)}")
         return None
 
-# Minor change to trigger Cloud Build
 app = Flask(__name__)
 
 # Configure standard logging
@@ -259,7 +257,7 @@ def extract_expected_pii(transcript: str) -> str | None:
     Returns the PII type (e.g., "PHONE_NUMBER") or None.
     """
     transcript_lower = transcript.lower()
-    
+
     context_keywords = DLP_CONFIG.get("context_keywords", {})
     if not context_keywords:
         logger.warning("No 'context_keywords' found in DLP_CONFIG. Cannot extract expected PII.")
@@ -271,7 +269,7 @@ def extract_expected_pii(transcript: str) -> str | None:
             if keyword in transcript_lower:
                 logger.info(f"Detected keyword '{keyword}' for PII type '{pii_type}'.")
                 return pii_type
-                
+
     return None
 
 def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
@@ -282,7 +280,7 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
     if not dlp_client:
         logger.warning("DLP client not available. Returning original transcript.")
         return transcript
-    
+
     # Use the globally available GCP_PROJECT_ID_FOR_SECRETS for DLP operations
     current_gcp_project_id = GCP_PROJECT_ID_FOR_SECRETS
     if not current_gcp_project_id or current_gcp_project_id == 'your-gcp-project-id': # Basic check for placeholder
@@ -330,52 +328,46 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
             # The custom info type definition itself is sufficient for detection.
             logger.info(f"Skipping rule_set for custom info type '{expected_type}' to avoid 'Invalid built-in info type' error.")
         else:
-            # It's a built-in type. Normalize and add it to the inspection config.
-            
-            # Step 1: Normalize the main info_types list to ensure all items are InfoType objects.
-            # This handles configs where info_types are just strings.
-            if "info_types" in final_inline_inspect_config:
-                final_inline_inspect_config["info_types"] = [
-                    types.InfoType(name=it) if isinstance(it, str) else (types.InfoType(name=it.get("name")) if isinstance(it, dict) else it)
-                    for it in final_inline_inspect_config.get("info_types", [])
-                ]
-            else:
+            # It's a built-in type. Add it to the info_types list if not already present.
+            if "info_types" not in final_inline_inspect_config:
                 final_inline_inspect_config["info_types"] = []
-
-            # Step 2: Add the expected_type if it's not already in the list.
-            existing_info_type_names = {it.name for it in final_inline_inspect_config["info_types"]}
-            if expected_type not in existing_info_type_names:
-                final_inline_inspect_config["info_types"].append(types.InfoType(name=expected_type))
+            existing_info_types = {it.get("name") for it in final_inline_inspect_config["info_types"]}
+            if expected_type not in existing_info_types:
+                final_inline_inspect_config["info_types"].append({"name": expected_type})
                 logger.info(f"Added built-in info type '{expected_type}' to final_inline_inspect_config.")
 
-            # Step 3: Find or create a rule_set to boost the likelihood for the expected_type.
+            # For built-in info types, ensure it's included and boost likelihood.
+            if "info_types" not in final_inline_inspect_config:
+                final_inline_inspect_config["info_types"] = []
+            existing_info_types = {it.get("name") for it in final_inline_inspect_config["info_types"]}
+            if expected_type not in existing_info_types:
+                final_inline_inspect_config["info_types"].append({"name": expected_type})
+                logger.info(f"Added built-in info type '{expected_type}' to final_inline_inspect_config.")
+
+            # Check if a rule set for this info type already exists
             rule_set_found = False
             if "rule_set" not in final_inline_inspect_config:
                 final_inline_inspect_config["rule_set"] = []
 
-            # Normalize info_types within each rule_set entry before checking them.
             for rule_set_entry in final_inline_inspect_config["rule_set"]:
                 if "info_types" in rule_set_entry:
-                    rule_set_entry["info_types"] = [
-                        types.InfoType(name=it) if isinstance(it, str) else (types.InfoType(name=it.get("name")) if isinstance(it, dict) else it)
-                        for it in rule_set_entry.get("info_types", [])
-                    ]
-                    
-                    rule_set_info_type_names = {it.name for it in rule_set_entry["info_types"]}
-                    if expected_type in rule_set_info_type_names:
-                        # Found it. Ensure likelihood is boosted.
+                    # Check if the expected_type is already in this rule set's info_types
+                    rule_set_info_types = {it.get("name") for it in rule_set_entry["info_types"]}
+                    if expected_type in rule_set_info_types:
+                        # Found an existing rule set that includes this info type.
+                        # Ensure the likelihood is boosted.
                         for rule in rule_set_entry.get("rules", []):
                             if "hotword_rule" in rule and "likelihood_adjustment" in rule["hotword_rule"]:
                                 rule["hotword_rule"]["likelihood_adjustment"]["fixed_likelihood"] = dlp_v2.Likelihood.VERY_LIKELY
                                 logger.info(f"Updated likelihood for existing rule set for built-in type '{expected_type}'.")
                                 rule_set_found = True
-                                break  # from rules loop
+                                break # Break from inner loop (rules)
                     if rule_set_found:
-                        break  # from rule_set_entry loop
+                        break # Break from outer loop (rule_set_entry)
 
-            # Step 4: If no existing rule_set was found for this type, create a new one.
             if not rule_set_found:
-                new_rule = {
+                # If no existing rule set was found for this info type, create a new one.
+                rule = {
                     "hotword_rule": {
                         "hotword_regex": {"pattern": ".+"},
                         "proximity": {"window_before": 100, "window_after": 100},
@@ -383,8 +375,8 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
                     }
                 }
                 final_inline_inspect_config["rule_set"].append({
-                    "info_types": [types.InfoType(name=expected_type)],
-                    "rules": [new_rule]
+                    "info_types": [{"name": expected_type}],
+                    "rules": [rule]
                 })
                 logger.info(f"Created new rule set for built-in type '{expected_type}' with boosted likelihood.")
 
@@ -401,25 +393,9 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
         }
     })
 
-    # --- Conversion to dlp_v2.types.InfoType ---
-    # Ensure all info_types in the final config are of the correct type, not strings.
-    if "info_types" in final_inline_inspect_config:
-        final_inline_inspect_config["info_types"] = [
-            types.InfoType(name=it) if isinstance(it, str) else it
-            for it in final_inline_inspect_config.get("info_types", [])
-        ]
-
-    if "rule_set" in final_inline_inspect_config:
-        for rule_set_entry in final_inline_inspect_config.get("rule_set", []):
-            if "info_types" in rule_set_entry:
-                rule_set_entry["info_types"] = [
-                    types.InfoType(name=it) if isinstance(it, str) else it
-                    for it in rule_set_entry.get("info_types", [])
-                ]
-
     try:
         logger.info(f"Sending request to DLP API for parent: {parent}, inspect_template: {inspect_template_name}, deidentify_template: {deidentify_template_name}, transcript_preview: {transcript[:100]}")
-        
+
         request = {
             "parent": parent,
             "item": {"value": transcript},
@@ -445,14 +421,14 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
             logger.info("Using inline deidentify_config (no template name provided).")
 
         response = dlp_client.deidentify_content(request=request)
-        
+
         redacted_value = response.item.value
         logger.info(f"DLP De-identification successful. Redacted_transcript_preview: {redacted_value[:100]}")
         return redacted_value
 
     except NotFound as e:
         logger.warning(f"DLP API Error: Requested inspect/deidentify template not found ({inspect_template_name}, {deidentify_template_name}). Falling back to inline configuration. Error: {str(e)}")
-        
+
         # Fallback attempt: retry without templates, forcing inline config
         try:
             fallback_request = {
@@ -495,4 +471,4 @@ if __name__ == "__main__":
     # This block is for local development only.
     # For Cloud Run, Gunicorn (as specified in Dockerfile) will run the app.
     # app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
-    pass # No action needed when run by Gunicorn
+    pass
