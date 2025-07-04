@@ -332,17 +332,17 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
             # It's a built-in type. Add it to the info_types list if not already present.
             if "info_types" not in final_inline_inspect_config:
                 final_inline_inspect_config["info_types"] = []
-            existing_info_types = {it.get("name") for it in final_inline_inspect_config["info_types"]}
+            existing_info_types = {it.name for it in final_inline_inspect_config["info_types"] if isinstance(it, dlp_v2.types.InfoType)}
             if expected_type not in existing_info_types:
-                final_inline_inspect_config["info_types"].append({"name": expected_type})
+                final_inline_inspect_config["info_types"].append(dlp_v2.types.InfoType(name=expected_type))
                 logger.info(f"Added built-in info type '{expected_type}' to final_inline_inspect_config.")
 
             # For built-in info types, ensure it's included and boost likelihood.
             if "info_types" not in final_inline_inspect_config:
                 final_inline_inspect_config["info_types"] = []
-            existing_info_types = {it.get("name") for it in final_inline_inspect_config["info_types"]}
+            existing_info_types = {it.name for it in final_inline_inspect_config["info_types"] if isinstance(it, dlp_v2.types.InfoType)}
             if expected_type not in existing_info_types:
-                final_inline_inspect_config["info_types"].append({"name": expected_type})
+                final_inline_inspect_config["info_types"].append(dlp_v2.types.InfoType(name=expected_type))
                 logger.info(f"Added built-in info type '{expected_type}' to final_inline_inspect_config.")
 
             # Check if a rule set for this info type already exists
@@ -353,7 +353,7 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
             for rule_set_entry in final_inline_inspect_config["rule_set"]:
                 if "info_types" in rule_set_entry:
                     # Check if the expected_type is already in this rule set's info_types
-                    rule_set_info_types = {it.get("name") for it in rule_set_entry["info_types"]}
+                    rule_set_info_types = {it.name for it in rule_set_entry["info_types"] if isinstance(it, dlp_v2.types.InfoType)}
                     if expected_type in rule_set_info_types:
                         # Found an existing rule set that includes this info type.
                         # Ensure the likelihood is boosted.
@@ -376,7 +376,7 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
                     }
                 }
                 final_inline_inspect_config["rule_set"].append({
-                    "info_types": [{"name": expected_type}],
+                    "info_types": [dlp_v2.types.InfoType(name=expected_type)],
                     "rules": [rule]
                 })
                 logger.info(f"Created new rule set for built-in type '{expected_type}' with boosted likelihood.")
