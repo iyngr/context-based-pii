@@ -233,7 +233,7 @@ def initiate_redaction():
         entry_payload = {
             "conversation_id": conversation_id,
             "original_entry_index": i,
-            "participant_role": segment.get('speaker', 'UNKNOWN').upper(), # Ensure uppercase for consistency
+            "participant_role": "END_USER" if segment.get('speaker', '').lower() == 'customer' else segment.get('speaker', 'UNKNOWN').upper(), # Map 'Customer' to 'END_USER'
             "text": segment.get('text', ''),
             "user_id": segment.get('user_id', 'frontend_user'), # Placeholder user_id
             "start_timestamp_usec": int(time.time() * 1_000_000) # Generate timestamp

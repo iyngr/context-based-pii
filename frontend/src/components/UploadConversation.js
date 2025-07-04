@@ -21,7 +21,7 @@ const UploadConversation = ({ setView, setJobId }) => {
             try {
                 const conversation = JSON.parse(e.target.result);
                 try {
-                    const response = await fetch('/initiate-redaction', {
+                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/initiate-redaction`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
