@@ -193,7 +193,7 @@ inspect_config:
           info_types:
           - EMAIL_ADDRESS
 deidentify_config:
-info_type_transformations:
-  transformations:
-  - primitive_transformation:
-      replace_with_info_type_config: {}
+  info_type_transformations:
+    transformations:
+    - primitive_transformation:
+        replace_with_info_type_config: {}
