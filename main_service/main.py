@@ -379,16 +379,19 @@ def get_redaction_status(job_id):
             response = ccai_insights_client.get_conversation(request=request)
             logger.info(f"Successfully retrieved conversation {job_id} from CCAI Insights.")
 
-            # Map participant IDs to roles
-            participant_map = {
-                participant.id: participant.role.name
-                for participant in response.participants
-            }
-
             # Extract transcript segments in the desired format for the frontend
             transcript_segments = []
             for segment in response.transcript.transcript_segments:
-                speaker = participant_map.get(segment.participant_id, "UNKNOWN")
+                # Use channel_tag for speaker identification, as participants field is not available
+                # Channel 1 typically represents the customer, Channel 2 the agent.
+                speaker = "UNKNOWN"
+                if segment.channel_tag == 1:
+                    speaker = "CUSTOMER"
+                elif segment.channel_tag == 2:
+                    speaker = "AGENT"
+                # If speaker_tag is available and preferred, you could use:
+                # speaker = segment.speaker_tag if segment.speaker_tag else "UNKNOWN"
+
                 transcript_segments.append({
                     "speaker": speaker,
                     "text": segment.text
