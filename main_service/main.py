@@ -6,6 +6,7 @@ import json
 import time
 import yaml
 from google.cloud import dlp_v2
+from google.cloud.dlp_v2 import types # Added this line
 from google.cloud.secretmanager import SecretManagerServiceClient
 from google.api_core.exceptions import NotFound, PermissionDenied, GoogleAPICallError, MethodNotImplemented
 
@@ -332,17 +333,17 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
             # It's a built-in type. Add it to the info_types list if not already present.
             if "info_types" not in final_inline_inspect_config:
                 final_inline_inspect_config["info_types"] = []
-            existing_info_types = {it.name for it in final_inline_inspect_config["info_types"] if isinstance(it, dlp_v2.types.InfoType)}
+            existing_info_types = {it.name for it in final_inline_inspect_config["info_types"] if isinstance(it, types.InfoType)}
             if expected_type not in existing_info_types:
-                final_inline_inspect_config["info_types"].append(dlp_v2.types.InfoType(name=expected_type))
+                final_inline_inspect_config["info_types"].append(types.InfoType(name=expected_type))
                 logger.info(f"Added built-in info type '{expected_type}' to final_inline_inspect_config.")
 
             # For built-in info types, ensure it's included and boost likelihood.
             if "info_types" not in final_inline_inspect_config:
                 final_inline_inspect_config["info_types"] = []
-            existing_info_types = {it.name for it in final_inline_inspect_config["info_types"] if isinstance(it, dlp_v2.types.InfoType)}
+            existing_info_types = {it.name for it in final_inline_inspect_config["info_types"] if isinstance(it, types.InfoType)}
             if expected_type not in existing_info_types:
-                final_inline_inspect_config["info_types"].append(dlp_v2.types.InfoType(name=expected_type))
+                final_inline_inspect_config["info_types"].append(types.InfoType(name=expected_type))
                 logger.info(f"Added built-in info type '{expected_type}' to final_inline_inspect_config.")
 
             # Check if a rule set for this info type already exists
@@ -353,7 +354,7 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
             for rule_set_entry in final_inline_inspect_config["rule_set"]:
                 if "info_types" in rule_set_entry:
                     # Check if the expected_type is already in this rule set's info_types
-                    rule_set_info_types = {it.name for it in rule_set_entry["info_types"] if isinstance(it, dlp_v2.types.InfoType)}
+                    rule_set_info_types = {it.name for it in rule_set_entry["info_types"] if isinstance(it, types.InfoType)}
                     if expected_type in rule_set_info_types:
                         # Found an existing rule set that includes this info type.
                         # Ensure the likelihood is boosted.
@@ -376,7 +377,7 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
                     }
                 }
                 final_inline_inspect_config["rule_set"].append({
-                    "info_types": [dlp_v2.types.InfoType(name=expected_type)],
+                    "info_types": [types.InfoType(name=expected_type)],
                     "rules": [rule]
                 })
                 logger.info(f"Created new rule set for built-in type '{expected_type}' with boosted likelihood.")
@@ -393,6 +394,22 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
             ]
         }
     })
+
+    # --- Conversion to dlp_v2.types.InfoType ---
+    # Ensure all info_types in the final config are of the correct type, not strings.
+    if "info_types" in final_inline_inspect_config:
+        final_inline_inspect_config["info_types"] = [
+            types.InfoType(name=it) if isinstance(it, str) else it
+            for it in final_inline_inspect_config.get("info_types", [])
+        ]
+
+    if "rule_set" in final_inline_inspect_config:
+        for rule_set_entry in final_inline_inspect_config.get("rule_set", []):
+            if "info_types" in rule_set_entry:
+                rule_set_entry["info_types"] = [
+                    types.InfoType(name=it) if isinstance(it, str) else it
+                    for it in rule_set_entry.get("info_types", [])
+                ]
 
     try:
         logger.info(f"Sending request to DLP API for parent: {parent}, inspect_template: {inspect_template_name}, deidentify_template: {deidentify_template_name}, transcript_preview: {transcript[:100]}")
