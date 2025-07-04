@@ -330,46 +330,52 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
             # The custom info type definition itself is sufficient for detection.
             logger.info(f"Skipping rule_set for custom info type '{expected_type}' to avoid 'Invalid built-in info type' error.")
         else:
-            # It's a built-in type. Add it to the info_types list if not already present.
-            if "info_types" not in final_inline_inspect_config:
+            # It's a built-in type. Normalize and add it to the inspection config.
+            
+            # Step 1: Normalize the main info_types list to ensure all items are InfoType objects.
+            # This handles configs where info_types are just strings.
+            if "info_types" in final_inline_inspect_config:
+                final_inline_inspect_config["info_types"] = [
+                    types.InfoType(name=it) if isinstance(it, str) else (types.InfoType(name=it.get("name")) if isinstance(it, dict) else it)
+                    for it in final_inline_inspect_config.get("info_types", [])
+                ]
+            else:
                 final_inline_inspect_config["info_types"] = []
-            existing_info_types = {it.name for it in final_inline_inspect_config["info_types"] if isinstance(it, types.InfoType)}
-            if expected_type not in existing_info_types:
+
+            # Step 2: Add the expected_type if it's not already in the list.
+            existing_info_type_names = {it.name for it in final_inline_inspect_config["info_types"]}
+            if expected_type not in existing_info_type_names:
                 final_inline_inspect_config["info_types"].append(types.InfoType(name=expected_type))
                 logger.info(f"Added built-in info type '{expected_type}' to final_inline_inspect_config.")
 
-            # For built-in info types, ensure it's included and boost likelihood.
-            if "info_types" not in final_inline_inspect_config:
-                final_inline_inspect_config["info_types"] = []
-            existing_info_types = {it.name for it in final_inline_inspect_config["info_types"] if isinstance(it, types.InfoType)}
-            if expected_type not in existing_info_types:
-                final_inline_inspect_config["info_types"].append(types.InfoType(name=expected_type))
-                logger.info(f"Added built-in info type '{expected_type}' to final_inline_inspect_config.")
-
-            # Check if a rule set for this info type already exists
+            # Step 3: Find or create a rule_set to boost the likelihood for the expected_type.
             rule_set_found = False
             if "rule_set" not in final_inline_inspect_config:
                 final_inline_inspect_config["rule_set"] = []
 
+            # Normalize info_types within each rule_set entry before checking them.
             for rule_set_entry in final_inline_inspect_config["rule_set"]:
                 if "info_types" in rule_set_entry:
-                    # Check if the expected_type is already in this rule set's info_types
-                    rule_set_info_types = {it.name for it in rule_set_entry["info_types"] if isinstance(it, types.InfoType)}
-                    if expected_type in rule_set_info_types:
-                        # Found an existing rule set that includes this info type.
-                        # Ensure the likelihood is boosted.
+                    rule_set_entry["info_types"] = [
+                        types.InfoType(name=it) if isinstance(it, str) else (types.InfoType(name=it.get("name")) if isinstance(it, dict) else it)
+                        for it in rule_set_entry.get("info_types", [])
+                    ]
+                    
+                    rule_set_info_type_names = {it.name for it in rule_set_entry["info_types"]}
+                    if expected_type in rule_set_info_type_names:
+                        # Found it. Ensure likelihood is boosted.
                         for rule in rule_set_entry.get("rules", []):
                             if "hotword_rule" in rule and "likelihood_adjustment" in rule["hotword_rule"]:
                                 rule["hotword_rule"]["likelihood_adjustment"]["fixed_likelihood"] = dlp_v2.Likelihood.VERY_LIKELY
                                 logger.info(f"Updated likelihood for existing rule set for built-in type '{expected_type}'.")
                                 rule_set_found = True
-                                break # Break from inner loop (rules)
+                                break  # from rules loop
                     if rule_set_found:
-                        break # Break from outer loop (rule_set_entry)
+                        break  # from rule_set_entry loop
 
+            # Step 4: If no existing rule_set was found for this type, create a new one.
             if not rule_set_found:
-                # If no existing rule set was found for this info type, create a new one.
-                rule = {
+                new_rule = {
                     "hotword_rule": {
                         "hotword_regex": {"pattern": ".+"},
                         "proximity": {"window_before": 100, "window_after": 100},
@@ -378,7 +384,7 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
                 }
                 final_inline_inspect_config["rule_set"].append({
                     "info_types": [types.InfoType(name=expected_type)],
-                    "rules": [rule]
+                    "rules": [new_rule]
                 })
                 logger.info(f"Created new rule set for built-in type '{expected_type}' with boosted likelihood.")
 
