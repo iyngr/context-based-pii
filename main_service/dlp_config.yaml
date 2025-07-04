@@ -191,7 +191,7 @@ inspect_config:
         matching_type: MATCHING_TYPE_FULL_MATCH
         exclude_info_types:
           info_types:
-          - EMAIL_ADDRESS
+          - name: EMAIL_ADDRESS
 deidentify_config:
   info_type_transformations:
     transformations:

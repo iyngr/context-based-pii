@@ -23,6 +23,7 @@ This file tracks the project's progress using a task list format.
 *   Corrected DLP configuration for custom info types (e.g., `SOCIAL_HANDLE`) in `main_service/dlp_config.yaml` to ensure proper redaction and likelihood boosting.
 *   Resolved `TypeError` in `main_service` by reverting to a previously working version of `call_dlp_for_redaction`, which correctly handles `info_type` construction for the DLP API.
 *   Fixed `deidentify_config must be set` error by correcting the indentation of the `deidentify_config` section in `main_service/dlp_config.yaml`.
+*   Resolved `TypeError: Parameter to MergeFrom() must be instance of same class` by correcting the structure of `info_types` within the `rule_set` in `main_service/dlp_config.yaml`.
 
 ## Current Tasks
 
