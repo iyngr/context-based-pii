@@ -181,7 +181,7 @@ inspect_config:
         hotword_regex:
           pattern: "(?i)(imei|hardware id|mac address|physical address|ip address|internet protocol address)"
         proximity:
-          window_before: 50
+          window_before: 60
         likelihood_adjustment:
           fixed_likelihood: LIKELY
   - info_types:
