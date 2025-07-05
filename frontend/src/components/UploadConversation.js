@@ -21,13 +21,21 @@ const UploadConversation = ({ setView, setJobId }) => {
             try {
                 const conversation = JSON.parse(e.target.result);
                 try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/initiate-redaction`, {
+                    const response = await fetch('/initiate-redaction', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            transcript: conversation, // Assuming uploaded JSON is the transcript
+                            transcript: {
+                                transcript_segments: conversation.entries.map(entry => ({
+                                    speaker: entry.role, // Map 'role' from uploaded JSON to 'speaker'
+                                    text: entry.text,
+                                    // You can add other fields from 'entry' here if needed by the backend,
+                                    // e.g., original_entry_index: entry.original_entry_index,
+                                    // user_id: entry.user_id,
+                                }))
+                            },
                         }),
                     });
 

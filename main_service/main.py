@@ -235,7 +235,7 @@ def initiate_redaction():
             "original_entry_index": i,
             "participant_role": "END_USER" if segment.get('speaker', '').lower() == 'customer' else segment.get('speaker', 'UNKNOWN').upper(), # Map 'Customer' to 'END_USER'
             "text": segment.get('text', ''),
-            "user_id": segment.get('user_id', 'frontend_user'), # Placeholder user_id
+            "user_id": 1 if segment.get('speaker', '').lower() == 'customer' else 2, # Assign numeric user_id based on role
             "start_timestamp_usec": int(time.time() * 1_000_000) # Generate timestamp
         }
         message_payload = json.dumps(entry_payload)

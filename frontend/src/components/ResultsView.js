@@ -22,7 +22,7 @@ const ResultsView = ({ jobId, setView }) => {
 
         const poll = setInterval(async () => {
             try {
-                const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/redaction-status/${jobId}`);
+                const response = await fetch(`/redaction-status/${jobId}`);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
