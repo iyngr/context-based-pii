@@ -272,8 +272,9 @@ def initiate_redaction():
     if redis_client:
         try:
             redis_client.set(f"job_status:{conversation_id}", "PROCESSING")
-            redis_client.set(f"job_conversation:{conversation_id}", json.dumps({"transcript": {"transcript_segments": []}})) # Initialize empty conversation
-            logger.info(f"Initialized job status for {conversation_id} in Redis.")
+            redis_client.set(f"original_conversation:{conversation_id}", json.dumps(transcript_segments)) # Store original transcript
+            redis_client.set(f"job_conversation:{conversation_id}", json.dumps({"transcript": {"transcript_segments": []}})) # Initialize empty conversation for redacted
+            logger.info(f"Initialized job status and stored original transcript for {conversation_id} in Redis.")
         except redis.exceptions.RedisError as e:
             logger.error(f"Redis error during job status initialization for {conversation_id}: {str(e)}")
             # This is not critical enough to fail the initiation, but log it.
@@ -403,9 +404,35 @@ def get_redaction_status(job_id):
             # For now, if we can retrieve the conversation, we assume it's DONE.
             status = "DONE" if transcript_segments else "PROCESSING"
 
+            # Retrieve original conversation from Redis
+            original_conversation_str = None
+            if redis_client:
+                try:
+                    original_conversation_str = redis_client.get(f"original_conversation:{job_id}")
+                    if original_conversation_str:
+                        original_transcript_segments = json.loads(original_conversation_str)
+                        logger.info(f"Retrieved original transcript for {job_id} from Redis.")
+                    else:
+                        original_transcript_segments = []
+                        logger.warning(f"Original transcript not found in Redis for {job_id}.")
+                except redis.exceptions.RedisError as e:
+                    logger.error(f"Redis error retrieving original transcript for {job_id}: {str(e)}")
+                    original_transcript_segments = [] # Fallback to empty list on error
+                except json.JSONDecodeError as e:
+                    logger.error(f"JSON decode error for original transcript from Redis for {job_id}: {str(e)}")
+                    original_transcript_segments = [] # Fallback to empty list on error
+            else:
+                original_transcript_segments = []
+                logger.warning("Redis client not available, cannot retrieve original transcript.")
+
             return jsonify({
                 "status": status,
-                "conversation": {
+                "original_conversation": { # New field for original conversation
+                    "transcript": {
+                        "transcript_segments": original_transcript_segments
+                    }
+                },
+                "redacted_conversation": { # Renamed for clarity
                     "transcript": {
                         "transcript_segments": transcript_segments
                     }
@@ -414,7 +441,35 @@ def get_redaction_status(job_id):
 
         except NotFound:
             logger.info(f"Conversation {job_id} not yet found in CCAI Insights. Still processing or not yet ingested.")
-            return jsonify({"status": "PROCESSING", "message": "Conversation not yet available"}), 200
+            # Retrieve original conversation even if redacted is not ready
+            original_conversation_str = None
+            if redis_client:
+                try:
+                    original_conversation_str = redis_client.get(f"original_conversation:{job_id}")
+                    if original_conversation_str:
+                        original_transcript_segments = json.loads(original_conversation_str)
+                    else:
+                        original_transcript_segments = []
+                except Exception as e:
+                    logger.error(f"Error retrieving original transcript during NotFound for {job_id}: {str(e)}")
+                    original_transcript_segments = []
+            else:
+                original_transcript_segments = []
+
+            return jsonify({
+                "status": "PROCESSING",
+                "message": "Conversation not yet available",
+                "original_conversation": {
+                    "transcript": {
+                        "transcript_segments": original_transcript_segments
+                    }
+                },
+                "redacted_conversation": {
+                    "transcript": {
+                        "transcript_segments": [] # Redacted is empty if not found
+                    }
+                }
+            }), 200
         except PermissionDenied as e:
             logger.error(f"Permission denied to access conversation {job_id} in CCAI Insights: {str(e)}")
             return jsonify({"status": "FAILED", "error": "Permission denied to access conversation"}), 403
