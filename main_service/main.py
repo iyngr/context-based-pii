@@ -230,12 +230,13 @@ def initiate_redaction():
     raw_topic_path = publisher_client.topic_path(GCP_PROJECT_ID_FOR_SECRETS, RAW_TRANSCRIPTS_TOPIC)
     publish_futures = []
     for i, segment in enumerate(transcript_segments):
+        participant_role = "END_USER" if segment.get('speaker', '').lower() == 'customer' else segment.get('speaker', 'UNKNOWN').upper()
         entry_payload = {
             "conversation_id": conversation_id,
             "original_entry_index": i,
-            "participant_role": "END_USER" if segment.get('speaker', '').lower() == 'customer' else segment.get('speaker', 'UNKNOWN').upper(), # Map 'Customer' to 'END_USER'
+            "participant_role": participant_role,
             "text": segment.get('text', ''),
-            "user_id": 1 if entry_payload["participant_role"] == "END_USER" else 2, # Assign numeric user_id based on participant_role
+            "user_id": 1 if participant_role == "END_USER" else 2, # Assign numeric user_id based on participant_role
             "start_timestamp_usec": int(time.time() * 1_000_000) # Generate timestamp
         }
         message_payload = json.dumps(entry_payload)
