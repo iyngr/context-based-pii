@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     Box,
     Typography,
@@ -14,8 +14,13 @@ import {
 
 const ResultsView = ({ jobId, setView }) => {
     const [status, setStatus] = useState('PROCESSING');
-    const [conversation, setConversation] = useState(null);
+    const [originalConversation, setOriginalConversation] = useState(null);
+    const [redactedConversation, setRedactedConversation] = useState(null);
     const [error, setError] = useState(null);
+
+    const originalPanelRef = useRef(null);
+    const redactedPanelRef = useRef(null);
+    const isScrolling = useRef(false);
 
     useEffect(() => {
         if (!jobId) return;
@@ -28,9 +33,15 @@ const ResultsView = ({ jobId, setView }) => {
                 }
                 const data = await response.json();
 
+                if (data.original_conversation) {
+                    setOriginalConversation(data.original_conversation);
+                }
+                if (data.redacted_conversation) {
+                    setRedactedConversation(data.redacted_conversation);
+                }
+
                 if (data.status === 'DONE') {
                     setStatus('DONE');
-                    setConversation(data.conversation);
                     clearInterval(poll);
                 } else if (data.status === 'FAILED') {
                     setStatus('FAILED');
@@ -47,27 +58,43 @@ const ResultsView = ({ jobId, setView }) => {
         return () => clearInterval(poll);
     }, [jobId]);
 
+    const handleScroll = (scrolledPanel) => {
+        if (isScrolling.current) return;
+        isScrolling.current = true;
+
+        const { scrollTop } = scrolledPanel;
+        if (scrolledPanel === originalPanelRef.current && redactedPanelRef.current) {
+            redactedPanelRef.current.scrollTop = scrollTop;
+        } else if (scrolledPanel === redactedPanelRef.current && originalPanelRef.current) {
+            originalPanelRef.current.scrollTop = scrollTop;
+        }
+
+        setTimeout(() => {
+            isScrolling.current = false;
+        }, 50);
+    };
+
     const renderTranscript = (segments, redacted = false) => (
         <List>
-            {segments.map((msg, index) => (
+            {segments && segments.map((msg, index) => (
                 <ListItem
                     key={index}
                     sx={{
                         justifyContent:
-                            msg.speaker === 'Customer' ? 'flex-start' : 'flex-end',
+                            msg.speaker === 'END_USER' ? 'flex-start' : 'flex-end', // Changed 'CUSTOMER' to 'END_USER'
                     }}
                 >
                     <Box
                         sx={{
                             bgcolor: redacted
-                                ? msg.speaker === 'Customer'
+                                ? msg.speaker === 'END_USER' // Changed 'CUSTOMER' to 'END_USER'
                                     ? '#fff0f0'
                                     : '#e0f7fa'
-                                : msg.speaker === 'Customer'
+                                : msg.speaker === 'END_USER' // Changed 'CUSTOMER' to 'END_USER'
                                     ? '#f0f0f0'
                                     : 'primary.main',
                             color:
-                                !redacted && msg.speaker === 'Agent' ? 'white' : 'black',
+                                !redacted && msg.speaker === 'AGENT' ? 'white' : 'black',
                             p: 1,
                             borderRadius: 2,
                             maxWidth: '80%',
@@ -93,7 +120,7 @@ const ResultsView = ({ jobId, setView }) => {
     );
 
     return (
-        <Box sx={{ maxWidth: 1200, margin: 'auto', mt: 4 }}>
+        <Box sx={{ margin: 'auto', mt: 4 }}> {/* Removed maxWidth */}
             <Button onClick={() => setView('welcome')} sx={{ mb: 2 }}>
                 Start Over
             </Button>
@@ -113,22 +140,32 @@ const ResultsView = ({ jobId, setView }) => {
                     {error}
                 </Alert>
             )}
-            {status === 'DONE' && conversation && (
+            {status === 'DONE' && originalConversation && redactedConversation && (
                 <Grid container spacing={2}>
                     <Grid item xs={12} md={6}>
                         <Typography variant="h6">Original Transcript</Typography>
-                        <Paper elevation={3} sx={{ height: 500, overflowY: 'auto', p: 2 }}>
+                        <Paper
+                            elevation={3}
+                            sx={{ height: 500, overflowY: 'auto', p: 2 }}
+                            ref={originalPanelRef}
+                            onScroll={(e) => handleScroll(e.target)}
+                        >
                             {renderTranscript(
-                                conversation.transcript.transcript_segments,
+                                originalConversation.transcript.transcript_segments,
                                 false
                             )}
                         </Paper>
                     </Grid>
                     <Grid item xs={12} md={6}>
                         <Typography variant="h6">Redacted Transcript</Typography>
-                        <Paper elevation={3} sx={{ height: 500, overflowY: 'auto', p: 2 }}>
+                        <Paper
+                            elevation={3}
+                            sx={{ height: 500, overflowY: 'auto', p: 2 }}
+                            ref={redactedPanelRef}
+                            onScroll={(e) => handleScroll(e.target)}
+                        >
                             {renderTranscript(
-                                conversation.transcript.transcript_segments,
+                                redactedConversation.transcript.transcript_segments,
                                 true
                             )}
                         </Paper>

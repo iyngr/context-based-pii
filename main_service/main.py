@@ -388,7 +388,7 @@ def get_redaction_status(job_id):
                 # Channel 1 typically represents the customer, Channel 2 the agent.
                 speaker = "UNKNOWN"
                 if segment.channel_tag == 1:
-                    speaker = "CUSTOMER"
+                    speaker = "END_USER"
                 elif segment.channel_tag == 2:
                     speaker = "AGENT"
                 # If speaker_tag is available and preferred, you could use:
