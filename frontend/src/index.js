@@ -36,7 +36,6 @@ const handleGoogleSignIn = () => {
 // Automatically trigger Google Sign-In when the app loads
 // In a real application, you would likely have a button for this.
 // For now, we'll just call it directly to ensure the flow is initiated.
-handleGoogleSignIn();
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
