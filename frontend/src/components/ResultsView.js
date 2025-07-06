@@ -3,7 +3,6 @@ import {
     Box,
     Typography,
     Paper,
-    Grid,
     CircularProgress,
     Alert,
     Button,
@@ -27,7 +26,7 @@ const ResultsView = ({ jobId, setView }) => {
 
         const poll = setInterval(async () => {
             try {
-                const response = await fetch(`/redaction-status/${jobId}`);
+                const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/redaction-status/${jobId}`);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -141,8 +140,8 @@ const ResultsView = ({ jobId, setView }) => {
                 </Alert>
             )}
             {status === 'DONE' && originalConversation && redactedConversation && (
-                <Grid container spacing={2}>
-                    <Grid item xs={12} md={6}>
+                <Box sx={{ display: 'flex', flexDirection: 'row', gap: 2 }}>
+                    <Box sx={{ flex: 1 }}>
                         <Typography variant="h6">Original Transcript</Typography>
                         <Paper
                             elevation={3}
@@ -155,8 +154,8 @@ const ResultsView = ({ jobId, setView }) => {
                                 false
                             )}
                         </Paper>
-                    </Grid>
-                    <Grid item xs={12} md={6}>
+                    </Box>
+                    <Box sx={{ flex: 1 }}>
                         <Typography variant="h6">Redacted Transcript</Typography>
                         <Paper
                             elevation={3}
@@ -169,8 +168,8 @@ const ResultsView = ({ jobId, setView }) => {
                                 true
                             )}
                         </Paper>
-                    </Grid>
-                </Grid>
+                    </Box>
+                </Box>
             )}
         </Box>
     );

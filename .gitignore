@@ -23,3 +23,5 @@ dlp_redaction_test.py
 .gemini/settings.json
 node_modules/
 frontend/.env
+# Local environment variables
+frontend/.env

@@ -11,6 +11,7 @@ from google.cloud import pubsub_v1 # New import for Pub/Sub publishing
 from google.cloud import contact_center_insights_v1 # New import for CCAI Insights API
 from google.cloud.secretmanager import SecretManagerServiceClient
 from google.api_core.exceptions import NotFound, PermissionDenied, GoogleAPICallError, MethodNotImplemented
+from flask_cors import CORS
 
 # --- Google Cloud Secret Manager Helper ---
 GCP_PROJECT_ID_FOR_SECRETS = os.getenv("GOOGLE_CLOUD_PROJECT")
@@ -56,7 +57,10 @@ def get_secret(secret_id, version_id="latest", project_id=None):
         logger.error(f"An unexpected error occurred while fetching secret {secret_id} (version: {version_id}): {str(e)}")
         return None
 
+# Get the frontend URL from an environment variable, with a fallback for local dev
 app = Flask(__name__)
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+CORS(app, resources={r"/*": {"origins": FRONTEND_URL}})
 
 # Configure standard logging
 logging.basicConfig(level=logging.INFO,

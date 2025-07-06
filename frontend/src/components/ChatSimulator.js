@@ -18,7 +18,8 @@ const ChatSimulator = ({ setView, setJobId }) => {
 
     const handleSendMessage = (speaker, text) => {
         if (text.trim() === '') return;
-        setMessages([...messages, { speaker, text }]);
+        const role = speaker === 'Customer' ? 'END_USER' : 'AGENT';
+        setMessages([...messages, { speaker: role, text }]);
         if (speaker === 'Customer') {
             setCustomerInput('');
         } else {
@@ -28,7 +29,7 @@ const ChatSimulator = ({ setView, setJobId }) => {
 
     const handleAnalyze = async () => {
         try {
-            const response = await fetch('/initiate-redaction', {
+            const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/initiate-redaction`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -69,14 +70,14 @@ const ChatSimulator = ({ setView, setJobId }) => {
                             key={index}
                             sx={{
                                 justifyContent:
-                                    msg.speaker === 'Customer' ? 'flex-start' : 'flex-end',
+                                    msg.speaker === 'END_USER' ? 'flex-start' : 'flex-end',
                             }}
                         >
                             <Box
                                 sx={{
                                     bgcolor:
-                                        msg.speaker === 'Customer' ? '#f0f0f0' : 'primary.main',
-                                    color: msg.speaker === 'Customer' ? 'black' : 'white',
+                                        msg.speaker === 'END_USER' ? '#f0f0f0' : 'primary.main',
+                                    color: msg.speaker === 'END_USER' ? 'black' : 'white',
                                     p: 1,
                                     borderRadius: 2,
                                     maxWidth: '70%',
