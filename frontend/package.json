@@ -7,13 +7,14 @@
         "@emotion/styled": "latest",
         "@mui/icons-material": "latest",
         "@mui/material": "latest",
+        "dotenv": "^17.0.1",
         "eslint-config-react-app": "^7.0.1",
+        "express": "latest",
+        "firebase": "latest",
+        "http-proxy-middleware": "latest",
         "react": "latest",
         "react-dom": "latest",
-        "react-scripts": "latest",
-        "express": "latest",
-        "http-proxy-middleware": "latest",
-        "firebase": "latest"
+        "react-scripts": "latest"
     },
     "scripts": {
         "start": "node server.js",
