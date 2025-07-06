@@ -1,6 +1,20 @@
 # Cloud Build configuration for the Frontend service
 
 steps:
+  # Restore npm cache
+  - id: 'Restore npm cache'
+    name: 'gcr.io/cloud-builders/gsutil'
+    entrypoint: bash
+    args: ['-c', 'gsutil cp gs://${_FRONTEND_CACHE_BUCKET}/npm-cache.tar.gz . || exit 0']
+    dir: 'frontend'
+
+  # Extract npm cache (if restored)
+  - id: 'Extract npm cache'
+    name: 'gcr.io/cloud-builders/docker'
+    entrypoint: bash
+    args: ['-c', 'tar -xzf npm-cache.tar.gz || exit 0']
+    dir: 'frontend'
+
   # Build the Docker image for the frontend
   - id: 'Build frontend image'
     name: 'gcr.io/cloud-builders/docker'
@@ -14,6 +28,18 @@ steps:
       - 'REACT_APP_FIREBASE_STORAGE_BUCKET=${_FIREBASE_STORAGE_BUCKET}'
       - 'REACT_APP_FIREBASE_MESSAGING_SENDER_ID=${_FIREBASE_MESSAGING_SENDER_ID}'
       - 'REACT_APP_FIREBASE_APP_ID=${_FIREBASE_APP_ID}'
+
+  # Save npm cache
+  - id: 'Save npm cache'
+    name: 'gcr.io/cloud-builders/docker'
+    entrypoint: bash
+    args: ['-c', 'tar -czf npm-cache.tar.gz node_modules']
+    dir: 'frontend'
+
+  - id: 'Upload npm cache'
+    name: 'gcr.io/cloud-builders/gsutil'
+    args: ['cp', 'npm-cache.tar.gz', 'gs://${_FRONTEND_CACHE_BUCKET}/npm-cache.tar.gz']
+    dir: 'frontend'
 
   # Push the Docker image to the container registry
   - id: 'Push frontend image'
@@ -53,6 +79,7 @@ substitutions:
   _GAR_REPOSITORY: 'ccai-services'
   _SERVICE_NAME: frontend-app # Name of the Cloud Run service
   _REGION: us-central1 # GCP region for deployment
+  _FRONTEND_CACHE_BUCKET: '${PROJECT_ID}-frontend-build-cache' # New substitution for cache bucket
 
 options:
   logging: CLOUD_LOGGING_ONLY
