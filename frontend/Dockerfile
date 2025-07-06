@@ -7,7 +7,16 @@ COPY . .
 RUN npm run build
 
 # Production stage
-FROM nginx:stable-alpine
-COPY --from=build /app/build /usr/share/nginx/html
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install --production
+COPY . .
+RUN npm run build
+
+# Copy the server.js and the build output
+COPY server.js .
+COPY --from=build /app/build ./build
+
+EXPOSE 8080
+CMD ["node", "server.js"]

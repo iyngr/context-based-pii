@@ -1,0 +1,49 @@
+# Cloud Build configuration for the Frontend service
+
+steps:
+  # Build the Docker image for the frontend
+  - id: 'Build frontend image'
+    name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/${_SERVICE_NAME}:${SHORT_SHA}', '.']
+    dir: 'frontend'
+
+  # Push the Docker image to the container registry
+  - id: 'Push frontend image'
+    name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/${_SERVICE_NAME}:${SHORT_SHA}']
+
+  # Deploy the frontend service to Cloud Run
+  - id: 'Deploy frontend to Cloud Run'
+    name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_SERVICE_NAME}'
+      - '--image'
+      - '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/${_SERVICE_NAME}:${SHORT_SHA}'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--no-allow-unauthenticated' # Restrict access to authenticated principals
+      - '--min-instances=0'
+      - '--max-instances=1'
+      - '--service-account'
+      - 'context-manager-sa@${PROJECT_ID}.iam.gserviceaccount.com'
+    dir: 'frontend'
+    secretEnv:
+      - 'BACKEND_SERVICE_URL'
+
+substitutions:
+  _GAR_LOCATION: 'us-central1'
+  _GAR_REPOSITORY: 'ccai-services'
+  _SERVICE_NAME: frontend-app # Name of the Cloud Run service
+  _REGION: us-central1 # GCP region for deployment
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+availableSecrets:
+  secretManager:
+  - versionName: projects/${PROJECT_ID}/secrets/CONTEXT_MANAGER_URL/versions/latest
+    env: 'BACKEND_SERVICE_URL'
