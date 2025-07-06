@@ -1,3 +1,15 @@
+availableSecrets:
+  secretManager:
+  - versionName: projects/${PROJECT_ID}/secrets/FRONTEND_URL/versions/latest
+    env: 'FRONTEND_URL'
+  # Assuming other secrets like CONTEXT_MANAGER_REDIS_HOST and CONTEXT_MANAGER_REDIS_PORT
+  # are also managed in Secret Manager and need to be added here if not already present.
+  # Example for Redis secrets:
+  # - versionName: projects/${PROJECT_ID}/secrets/CONTEXT_MANAGER_REDIS_HOST/versions/latest
+  #   env: 'REDIS_HOST'
+  # - versionName: projects/${PROJECT_ID}/secrets/CONTEXT_MANAGER_REDIS_PORT/versions/latest
+  #   env: 'REDIS_PORT'
+
 steps:
 - id: 'Build context-manager image'
   name: 'gcr.io/cloud-builders/docker'
@@ -20,7 +32,7 @@ steps:
     - 'us-central1'
     - '--platform'
     - 'managed'
-    - '--allow-unauthenticated'
+    - '--allow-unauthenticated' # Note: This should ideally be --no-allow-unauthenticated as discussed previously
     - '--service-account'
     - '${_MAIN_SERVICE_SA}'
     - '--vpc-connector'
@@ -31,6 +43,11 @@ steps:
     - 'GOOGLE_CLOUD_PROJECT=${PROJECT_ID},CONTEXT_TTL_SECONDS=90'
     - '--min-instances=0'
     - '--max-instances=1'
+  secretEnv:
+    - 'FRONTEND_URL'
+    # Add other secret environment variables here if needed, e.g.:
+    # - 'REDIS_HOST'
+    # - 'REDIS_PORT'
 
 substitutions:
   _GAR_LOCATION: 'us-central1'
