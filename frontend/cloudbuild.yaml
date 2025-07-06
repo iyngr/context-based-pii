@@ -15,6 +15,12 @@ steps:
     args: ['-c', 'tar -xzf npm-cache.tar.gz || exit 0']
     dir: 'frontend'
 
+  # Install npm dependencies (will use cache if available)
+  - id: 'npm install'
+    name: 'node:18-alpine' # Use a Node.js image for npm commands
+    args: ['npm', 'ci'] # 'npm ci' is preferred for CI/CD for consistent installs
+    dir: 'frontend'
+
   # Build the Docker image for the frontend
   - id: 'Build frontend image'
     name: 'gcr.io/cloud-builders/docker'
@@ -31,7 +37,7 @@ steps:
 
   # Save npm cache
   - id: 'Save npm cache'
-    name: 'gcr.io/cloud-builders/docker'
+    name: 'node:18-alpine' # Use node image to ensure node_modules is accessible
     entrypoint: bash
     args: ['-c', 'tar -czf npm-cache.tar.gz node_modules']
     dir: 'frontend'
