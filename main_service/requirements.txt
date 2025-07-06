@@ -8,3 +8,4 @@ google-api-core
 google-cloud-contact-center-insights
 google-cloud-pubsub
 Flask-Cors
+firebase-admin

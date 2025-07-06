@@ -12,6 +12,14 @@ from google.cloud import contact_center_insights_v1 # New import for CCAI Insigh
 from google.cloud.secretmanager import SecretManagerServiceClient
 from google.api_core.exceptions import NotFound, PermissionDenied, GoogleAPICallError, MethodNotImplemented
 from flask_cors import CORS
+import firebase_admin
+from firebase_admin import credentials, auth
+from functools import wraps
+
+# Configure standard logging
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s %(levelname)s %(name)s %(module)s %(funcName)s %(lineno)d : %(message)s')
+logger = logging.getLogger(__name__)
 
 # --- Google Cloud Secret Manager Helper ---
 GCP_PROJECT_ID_FOR_SECRETS = os.getenv("GOOGLE_CLOUD_PROJECT")
@@ -62,10 +70,44 @@ app = Flask(__name__)
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 CORS(app, resources={r"/*": {"origins": FRONTEND_URL}})
 
-# Configure standard logging
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s %(levelname)s %(name)s %(module)s %(funcName)s %(lineno)d : %(message)s')
-logger = logging.getLogger(__name__)
+# --- Firebase Admin SDK Initialization ---
+try:
+    # Initialize Firebase Admin SDK.
+    # On Cloud Run, this will automatically pick up credentials from the service account.
+    # For local development, ensure GOOGLE_APPLICATION_CREDENTIALS is set or use a service account key file.
+    firebase_admin.initialize_app()
+    logger.info("Firebase Admin SDK initialized successfully.")
+except ValueError as e:
+    logger.error(f"Firebase Admin SDK initialization failed: {e}. This might happen if it's already initialized or credentials are missing.")
+except Exception as e:
+    logger.critical(f"An unexpected error occurred during Firebase Admin SDK initialization: {e}. Exiting.")
+    exit(1)
+
+# --- Authentication Decorator ---
+def firebase_auth_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        auth_header = request.headers.get('Authorization')
+        if not auth_header:
+            logger.warning("Authentication: Missing Authorization header.")
+            return jsonify({"error": "Authorization header missing"}), 401
+
+        try:
+            id_token = auth_header.split('Bearer ')[1]
+            decoded_token = auth.verify_id_token(id_token)
+            request.firebase_user = decoded_token # Attach decoded token to request object
+            logger.info(f"Authentication: Token verified for user UID: {decoded_token['uid']}")
+        except IndexError:
+            logger.warning("Authentication: Invalid Authorization header format.")
+            return jsonify({"error": "Invalid Authorization header format"}), 401
+        except auth.InvalidIdTokenError as e:
+            logger.warning(f"Authentication: Invalid ID token. Error: {e}")
+            return jsonify({"error": "Invalid authentication token"}), 403
+        except Exception as e:
+            logger.error(f"Authentication: An unexpected error occurred during token verification: {e}")
+            return jsonify({"error": "Authentication failed"}), 500
+        return f(*args, **kwargs)
+    return decorated_function
 
 # Configuration
 # Sensitive values are fetched from Google Cloud Secret Manager
@@ -197,11 +239,13 @@ def hello_world():
     return "Hello, World! This is the Context Manager Service."
 
 @app.route('/initiate-redaction', methods=['POST'])
+@firebase_auth_required
 def initiate_redaction():
     """
     Receives a conversation transcript from the frontend,
     initiates the redaction process by publishing to Pub/Sub,
     and returns a jobId.
+    Requires Firebase authentication.
     """
     data = request.get_json()
     if not data or 'transcript' not in data or 'transcript_segments' not in data['transcript']:
@@ -363,10 +407,12 @@ def handle_customer_utterance():
     return jsonify({"redacted_transcript": redacted_transcript, "context_used": retrieved_context is not None}), 200
 
 @app.route('/redaction-status/<job_id>', methods=['GET'])
+@firebase_auth_required
 def get_redaction_status(job_id):
     """
     Retrieves the status and (if available) the redacted conversation
     for a given job ID from CCAI Conversation Insights.
+    Requires Firebase authentication.
     """
     if not ccai_insights_client:
         logger.error("CCAI Conversation Insights client not available for /redaction-status.")

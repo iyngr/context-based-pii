@@ -11,7 +11,7 @@ import {
     Divider,
 } from '@mui/material';
 
-const ChatSimulator = ({ setView, setJobId }) => {
+const ChatSimulator = ({ setView, setJobId, idToken }) => {
     const [messages, setMessages] = useState([]);
     const [customerInput, setCustomerInput] = useState('');
     const [agentInput, setAgentInput] = useState('');
@@ -33,6 +33,7 @@ const ChatSimulator = ({ setView, setJobId }) => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${idToken}`,
                 },
                 body: JSON.stringify({
                     transcript: { transcript_segments: messages },

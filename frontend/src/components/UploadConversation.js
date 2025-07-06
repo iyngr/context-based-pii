@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button, Box, Typography, Alert } from '@mui/material';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 
-const UploadConversation = ({ setView, setJobId }) => {
+const UploadConversation = ({ setView, setJobId, idToken }) => {
     const [error, setError] = useState(null);
 
     const handleFileChange = (event) => {
@@ -25,6 +25,7 @@ const UploadConversation = ({ setView, setJobId }) => {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${idToken}`,
                         },
                         body: JSON.stringify({
                             transcript: {

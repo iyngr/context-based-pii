@@ -12,7 +12,8 @@
         "react-dom": "latest",
         "react-scripts": "latest",
         "express": "latest",
-        "http-proxy-middleware": "latest"
+        "http-proxy-middleware": "latest",
+        "firebase": "latest"
     },
     "scripts": {
         "start": "node server.js",

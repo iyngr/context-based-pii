@@ -11,7 +11,7 @@ import {
     ListItemText,
 } from '@mui/material';
 
-const ResultsView = ({ jobId, setView }) => {
+const ResultsView = ({ jobId, setView, idToken }) => {
     const [status, setStatus] = useState('PROCESSING');
     const [originalConversation, setOriginalConversation] = useState(null);
     const [redactedConversation, setRedactedConversation] = useState(null);
@@ -26,7 +26,11 @@ const ResultsView = ({ jobId, setView }) => {
 
         const poll = setInterval(async () => {
             try {
-                const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/redaction-status/${jobId}`);
+                const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/redaction-status/${jobId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${idToken}`,
+                    },
+                });
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
