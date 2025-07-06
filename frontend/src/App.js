@@ -9,11 +9,13 @@ import './App.css';
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 
 function App() {
+    console.log("App component rendered.");
     const [view, setView] = useState('welcome');
     const [jobId, setJobId] = useState(null);
     const [idToken, setIdToken] = useState(null);
 
     useEffect(() => {
+        console.log("App useEffect hook running.");
         const auth = getAuth();
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (user) {
@@ -29,34 +31,37 @@ function App() {
         return () => unsubscribe();
     }, []);
 
-    const WelcomeScreen = () => (
-        <Container maxWidth="sm" sx={{ textAlign: 'center', mt: 8 }}>
-            <Typography variant="h4" component="h1" gutterBottom>
-                CCAI PII Redaction Service
-            </Typography>
-            <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-                Choose how you would like to test the redaction service.
-            </Typography>
-            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2 }}>
-                <Button
-                    variant="contained"
-                    startIcon={<ChatIcon />}
-                    onClick={() => setView('chat')}
-                    size="large"
-                >
-                    Live Chat Simulation
-                </Button>
-                <Button
-                    variant="outlined"
-                    startIcon={<UploadFileIcon />}
-                    onClick={() => setView('upload')}
-                    size="large"
-                >
-                    Upload Conversation
-                </Button>
-            </Box>
-        </Container>
-    );
+    const WelcomeScreen = () => {
+        console.log("WelcomeScreen component rendered.");
+        return (
+            <Container maxWidth="sm" sx={{ textAlign: 'center', mt: 8 }}>
+                <Typography variant="h4" component="h1" gutterBottom>
+                    CCAI PII Redaction Service
+                </Typography>
+                <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+                    Choose how you would like to test the redaction service.
+                </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2 }}>
+                    <Button
+                        variant="contained"
+                        startIcon={<ChatIcon />}
+                        onClick={() => setView('chat')}
+                        size="large"
+                    >
+                        Live Chat Simulation
+                    </Button>
+                    <Button
+                        variant="outlined"
+                        startIcon={<UploadFileIcon />}
+                        onClick={() => setView('upload')}
+                        size="large"
+                    >
+                        Upload Conversation
+                    </Button>
+                </Box>
+            </Container>
+        );
+    };
 
     const renderView = () => {
         switch (view) {

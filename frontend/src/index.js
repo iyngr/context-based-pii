@@ -37,9 +37,12 @@ const handleGoogleSignIn = () => {
 // In a real application, you would likely have a button for this.
 // For now, we'll just call it directly to ensure the flow is initiated.
 
+console.log("Attempting to create React root.");
 const root = ReactDOM.createRoot(document.getElementById('root'));
+console.log("React root created. Attempting to render App component.");
 root.render(
     <React.StrictMode>
         <App />
     </React.StrictMode>
 );
+console.log("App component render initiated.");
