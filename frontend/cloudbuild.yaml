@@ -4,20 +4,20 @@ steps:
   # Restore npm cache
   - id: 'Restore npm cache'
     name: 'gcr.io/cloud-builders/gsutil'
-    entrypoint: bash
+    entrypoint: sh # Changed from bash to sh for Alpine compatibility
     args: ['-c', 'gsutil cp gs://${_FRONTEND_CACHE_BUCKET}/npm-cache.tar.gz . || exit 0']
     dir: 'frontend'
 
   # Extract npm cache (if restored)
   - id: 'Extract npm cache'
     name: 'gcr.io/cloud-builders/docker'
-    entrypoint: bash
+    entrypoint: sh # Changed from bash to sh for Alpine compatibility
     args: ['-c', 'tar -xzf npm-cache.tar.gz || exit 0']
     dir: 'frontend'
 
   # Install npm dependencies (will use cache if available)
   - id: 'npm install'
-    name: 'node:18-alpine' # Use a Node.js image for npm commands
+    name: 'node:23-alpine' # Use a Node.js image for npm commands
     args: ['npm', 'ci'] # 'npm ci' is preferred for CI/CD for consistent installs
     dir: 'frontend'
 
@@ -37,8 +37,8 @@ steps:
 
   # Save npm cache
   - id: 'Save npm cache'
-    name: 'node:18-alpine' # Use node image to ensure node_modules is accessible
-    entrypoint: bash
+    name: 'node:23-alpine' # Use node image to ensure node_modules is accessible
+    entrypoint: sh # Changed from bash to sh for Alpine compatibility
     args: ['-c', 'tar -czf npm-cache.tar.gz node_modules']
     dir: 'frontend'
 
