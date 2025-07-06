@@ -33,7 +33,7 @@ steps:
       - '${_REGION}'
       - '--platform'
       - 'managed'
-      - '--no-allow-unauthenticated' # Restrict access to authenticated principals
+      - '--allow-unauthenticated' # Allow public access for the frontend application
       - '--min-instances=0'
       - '--max-instances=1'
       - '--service-account'
