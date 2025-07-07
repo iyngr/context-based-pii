@@ -32,6 +32,7 @@ steps:
     - 'us-central1'
     - '--platform'
     - 'managed'
+    - '--allow-unauthenticated'
     - '--service-account'
     - '${_MAIN_SERVICE_SA}'
     - '--vpc-connector'

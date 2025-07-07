@@ -1,6 +1,9 @@
 import os
 import logging
 from flask import Flask, request, jsonify
+from flask_cors import CORS
+from google.oauth2 import id_token
+from google.auth.transport import requests
 import redis
 import json
 import time
@@ -11,10 +14,9 @@ from google.cloud import pubsub_v1 # New import for Pub/Sub publishing
 from google.cloud import contact_center_insights_v1 # New import for CCAI Insights API
 from google.cloud.secretmanager import SecretManagerServiceClient
 from google.api_core.exceptions import NotFound, PermissionDenied, GoogleAPICallError, MethodNotImplemented
-from flask_cors import CORS
-import firebase_admin
-from firebase_admin import credentials, auth
 from functools import wraps
+import firebase_admin  # Added import for firebase_admin
+from firebase_admin import auth  # Import auth for token verification
 
 # Configure standard logging
 logging.basicConfig(level=logging.INFO,
@@ -761,6 +763,23 @@ def call_dlp_for_redaction(transcript: str, context: dict | None) -> str:
     except Exception as e:
         logger.error(f"An unexpected error occurred during DLP API call: {str(e)}")
         return f"[DLP_PROCESSING_ERROR] {transcript}"
+
+def verify_token(auth_header: str) -> dict:
+    """Verifies the Google-signed ID token from the Authorization header."""
+    if not auth_header or not auth_header.startswith('Bearer '):
+        raise ValueError("Invalid Authorization header")
+    
+    token = auth_header.split('Bearer ')[1]
+    try:
+        # Specify the CLIENT_ID of the app that accesses the backend
+        # You might need to create a dedicated OAuth 2.0 Client ID for your frontend
+        # or verify against the token's audience. For now, we'll just verify the signature.
+        id_info = id_token.verify_oauth2_token(token, requests.Request())
+        return id_info
+    except ValueError as e:
+        # Invalid token
+        logging.error(f"Token verification failed: {e}")
+        raise
 
 if __name__ == "__main__":
     # This block is for local development only.
