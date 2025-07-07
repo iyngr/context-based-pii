@@ -8,7 +8,7 @@ steps:
     args:
       - '-c'
       - |
-        echo "CONTEXT_MANAGER_URL: $CONTEXT_MANAGER_URL"
+        echo "CONTEXT_MANAGER_URL: $$CONTEXT_MANAGER_URL"
         echo "FIREBASE_API_KEY: $FIREBASE_API_KEY"
     secretEnv:
       - 'CONTEXT_MANAGER_URL'
