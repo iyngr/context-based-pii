@@ -22,7 +22,7 @@ steps:
     args:
       - '-c'
       - |
-        docker build -t '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/${_SERVICE_NAME}:${SHORT_SHA}' `
+        docker build -t '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/${_SERVICE_NAME}:${SHORT_SHA}'
         --build-arg "REACT_APP_FIREBASE_API_KEY=$$FIREBASE_API_KEY" `
         --build-arg "REACT_APP_FIREBASE_AUTH_DOMAIN=$$FIREBASE_AUTH_DOMAIN" `
         --build-arg "REACT_APP_FIREBASE_PROJECT_ID=$$FIREBASE_PROJECT_ID" `
