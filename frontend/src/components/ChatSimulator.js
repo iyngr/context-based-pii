@@ -29,7 +29,7 @@ const ChatSimulator = ({ setView, setJobId, idToken }) => {
 
     const handleAnalyze = async () => {
         try {
-            const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/initiate-redaction`, {
+            const response = await fetch(`/api/initiate-redaction`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
