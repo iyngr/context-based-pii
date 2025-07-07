@@ -280,8 +280,8 @@ def initiate_redaction():
     })
     try:
         future = publisher_client.publish(lifecycle_topic_path, start_message_payload.encode("utf-8"))
-        future.result() # Wait for publish to complete
-        logger.info(f"Published 'conversation_started' for {conversation_id}.")
+        # No future.result() here to make it asynchronous
+        logger.info(f"Published 'conversation_started' for {conversation_id} asynchronously.")
     except Exception as e:
         logger.error(f"Failed to publish 'conversation_started' message for {conversation_id}: {str(e)}")
         return jsonify({"error": "Failed to initiate redaction process"}), 500
@@ -303,15 +303,12 @@ def initiate_redaction():
         future = publisher_client.publish(raw_topic_path, message_payload.encode("utf-8"))
         publish_futures.append(future)
     
-    # Wait for all utterances to publish
-    try:
-        for i, future in enumerate(publish_futures):
-            future.result()
-            logger.info(f"Published utterance {i+1}/{len(transcript_segments)} for '{conversation_id}'.")
-    except Exception as e:
-        logger.error(f"Failed to publish all utterances for {conversation_id}: {str(e)}")
-        # Depending on desired behavior, you might want to clean up or mark as failed in Redis here
-        return jsonify({"error": "Failed to publish all conversation segments"}), 500
+    # Do not wait for all utterances to publish to make it asynchronous
+    for i, future in enumerate(publish_futures):
+        # We are not calling future.result() here to make it asynchronous
+        logger.info(f"Queued utterance {i+1}/{len(transcript_segments)} for '{conversation_id}' asynchronously.")
+    # Error handling for asynchronous publishes would typically involve Pub/Sub dead-letter queues
+    # and separate monitoring, not blocking the main request.
 
     # 3. Send 'conversation_ended' message
     end_message_payload = json.dumps({
@@ -322,8 +319,8 @@ def initiate_redaction():
     })
     try:
         future = publisher_client.publish(lifecycle_topic_path, end_message_payload.encode("utf-8"))
-        future.result()
-        logger.info(f"Published 'conversation_ended' for {conversation_id}.")
+        # No future.result() here to make it asynchronous
+        logger.info(f"Published 'conversation_ended' for {conversation_id} asynchronously.")
     except Exception as e:
         logger.error(f"Failed to publish 'conversation_ended' message for {conversation_id}: {str(e)}")
         return jsonify({"error": "Failed to finalize redaction process initiation"}), 500
