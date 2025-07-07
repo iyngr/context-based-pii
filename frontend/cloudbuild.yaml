@@ -23,14 +23,14 @@ steps:
       - '-c'
       - |
         docker build -t '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/${_SERVICE_NAME}:${SHORT_SHA}'
-        --build-arg "REACT_APP_FIREBASE_API_KEY=$$FIREBASE_API_KEY" `
-        --build-arg "REACT_APP_FIREBASE_AUTH_DOMAIN=$$FIREBASE_AUTH_DOMAIN" `
-        --build-arg "REACT_APP_FIREBASE_PROJECT_ID=$$FIREBASE_PROJECT_ID" `
-        --build-arg "REACT_APP_FIREBASE_STORAGE_BUCKET=$$FIREBASE_STORAGE_BUCKET" `
-        --build-arg "REACT_APP_FIREBASE_MESSAGING_SENDER_ID=$$FIREBASE_MESSAGING_SENDER_ID" `
-        --build-arg "REACT_APP_FIREBASE_APP_ID=$$FIREBASE_APP_ID" `
-        --build-arg "REACT_APP_BACKEND_URL=$$CONTEXT_MANAGER_URL" `
-        --cache-from '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/${_SERVICE_NAME}:latest' `
+        --build-arg "REACT_APP_FIREBASE_API_KEY=$$FIREBASE_API_KEY"
+        --build-arg "REACT_APP_FIREBASE_AUTH_DOMAIN=$$FIREBASE_AUTH_DOMAIN"
+        --build-arg "REACT_APP_FIREBASE_PROJECT_ID=$$FIREBASE_PROJECT_ID"
+        --build-arg "REACT_APP_FIREBASE_STORAGE_BUCKET=$$FIREBASE_STORAGE_BUCKET"
+        --build-arg "REACT_APP_FIREBASE_MESSAGING_SENDER_ID=$$FIREBASE_MESSAGING_SENDER_ID"
+        --build-arg "REACT_APP_FIREBASE_APP_ID=$$FIREBASE_APP_ID"
+        --build-arg "REACT_APP_BACKEND_URL=$$CONTEXT_MANAGER_URL"
+        --cache-from '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/${_SERVICE_NAME}:latest'
         .
     dir: 'frontend'
     # Make secrets available as environment variables to this build step
