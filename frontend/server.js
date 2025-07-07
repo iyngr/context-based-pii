@@ -7,6 +7,13 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 const BACKEND_SERVICE_URL = process.env.BACKEND_SERVICE_URL || 'http://localhost:8081'; // Default for local development
 
+// Middleware to set security headers for Firebase Authentication
+app.use((req, res, next) => {
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+    res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+    next();
+});
+
 // Serve static files from the React build directory
 app.use(express.static(path.join(__dirname, 'build')));
 
