@@ -1,9 +1,21 @@
 # Build stage
 FROM node:18-alpine as build
 WORKDIR /app
+
+# Define ARGs for build-time variables that are passed in from the cloudbuild.yaml
+ARG REACT_APP_FIREBASE_API_KEY
+ARG REACT_APP_FIREBASE_AUTH_DOMAIN
+ARG REACT_APP_FIREBASE_PROJECT_ID
+ARG REACT_APP_FIREBASE_STORAGE_BUCKET
+ARG REACT_APP_FIREBASE_MESSAGING_SENDER_ID
+ARG REACT_APP_FIREBASE_APP_ID
+
 COPY package*.json ./
 RUN npm ci
 COPY . .
+
+# The Create React App build script will automatically use the REACT_APP_* environment variables
+# declared as ARGs above.
 RUN npm run build
 
 # Production stage
