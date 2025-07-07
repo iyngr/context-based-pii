@@ -36,7 +36,7 @@ function App() {
         return (
             <Container maxWidth="sm" sx={{ textAlign: 'center', mt: 8 }}>
                 <Typography variant="h4" component="h1" gutterBottom>
-                    CCAI PII Redaction Service
+                    Context-Based PII Redaction
                 </Typography>
                 <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
                     Choose how you would like to test the redaction service.
