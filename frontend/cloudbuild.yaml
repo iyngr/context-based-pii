@@ -23,6 +23,8 @@ steps:
       - 'REACT_APP_FIREBASE_MESSAGING_SENDER_ID=$(FIREBASE_MESSAGING_SENDER_ID)'
       - '--build-arg'
       - 'REACT_APP_FIREBASE_APP_ID=$(FIREBASE_APP_ID)'
+      - '--build-arg'
+      - 'REACT_APP_BACKEND_URL=$(CONTEXT_MANAGER_URL)' # <--- Corrected name here
       - '--cache-from'
       - '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/${_SERVICE_NAME}:latest'
       - '.'
@@ -35,6 +37,7 @@ steps:
       - 'FIREBASE_STORAGE_BUCKET'
       - 'FIREBASE_MESSAGING_SENDER_ID'
       - 'FIREBASE_APP_ID'
+      - 'CONTEXT_MANAGER_URL' # Ensure CONTEXT_MANAGER_URL is also listed here
 
   # Push the Docker image to the container registry
   - id: 'Push frontend image'
