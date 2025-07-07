@@ -14,15 +14,22 @@ steps:
       - '--cache-from'
       - '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/${_SERVICE_NAME}:latest'
     dir: 'frontend'
-    # Add build-time environment variables for Firebase config
-    # These are used by the frontend application at runtime, embedded during the build
+    # Make secrets available as environment variables to this step
+    secretEnv:
+      - 'FIREBASE_API_KEY'
+      - 'FIREBASE_AUTH_DOMAIN'
+      - 'FIREBASE_PROJECT_ID'
+      - 'FIREBASE_STORAGE_BUCKET'
+      - 'FIREBASE_MESSAGING_SENDER_ID'
+      - 'FIREBASE_APP_ID'
+    # Set environment variables for the 'docker build' command, referencing the secretEnv vars
     env:
-      - 'REACT_APP_FIREBASE_API_KEY=${FIREBASE_API_KEY}'
-      - 'REACT_APP_FIREBASE_AUTH_DOMAIN=${FIREBASE_AUTH_DOMAIN}'
-      - 'REACT_APP_FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}'
-      - 'REACT_APP_FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET}'
-      - 'REACT_APP_FIREBASE_MESSAGING_SENDER_ID=${FIREBASE_MESSAGING_SENDER_ID}'
-      - 'REACT_APP_FIREBASE_APP_ID=${FIREBASE_APP_ID}'
+      - 'REACT_APP_FIREBASE_API_KEY=FIREBASE_API_KEY'
+      - 'REACT_APP_FIREBASE_AUTH_DOMAIN=FIREBASE_AUTH_DOMAIN'
+      - 'REACT_APP_FIREBASE_PROJECT_ID=FIREBASE_PROJECT_ID'
+      - 'REACT_APP_FIREBASE_STORAGE_BUCKET=FIREBASE_STORAGE_BUCKET'
+      - 'REACT_APP_FIREBASE_MESSAGING_SENDER_ID=FIREBASE_MESSAGING_SENDER_ID'
+      - 'REACT_APP_FIREBASE_APP_ID=FIREBASE_APP_ID'
 
   # Push the Docker image to the container registry
   - id: 'Push frontend image'
