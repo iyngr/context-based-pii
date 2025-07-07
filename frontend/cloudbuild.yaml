@@ -1,56 +1,46 @@
 # Cloud Build configuration for the Frontend service
 
 steps:
-  # Restore npm cache
-  - id: 'Restore npm cache'
-    name: 'gcr.io/cloud-builders/gsutil'
-    entrypoint: sh # Changed from bash to sh for Alpine compatibility
-    args: ['-c', 'gsutil cp gs://${_FRONTEND_CACHE_BUCKET}/npm-cache.tar.gz . || exit 0']
-    dir: 'frontend'
-
-  # Extract npm cache (if restored)
-  - id: 'Extract npm cache'
-    name: 'gcr.io/cloud-builders/docker'
-    entrypoint: sh # Changed from bash to sh for Alpine compatibility
-    args: ['-c', 'tar -xzf npm-cache.tar.gz || exit 0']
-    dir: 'frontend'
-
-  # Install npm dependencies (will use cache if available)
-  - id: 'npm install'
-    name: 'node:23-alpine' # Use a Node.js image for npm commands
-    args: ['npm', 'ci'] # 'npm ci' is preferred for CI/CD for consistent installs
-    dir: 'frontend'
-
   # Build the Docker image for the frontend
+  # This step will now handle dependency installation internally via the Dockerfile
   - id: 'Build frontend image'
     name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/${_SERVICE_NAME}:${SHORT_SHA}', '.']
+    args:
+      - 'build'
+      - '-t'
+      - '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/${_SERVICE_NAME}:${SHORT_SHA}'
+      - '.'
+      # Add --cache-from to use the latest image in GAR as a cache source
+      - '--cache-from'
+      - '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/${_SERVICE_NAME}:latest'
     dir: 'frontend'
     # Add build-time environment variables for Firebase config
+    # These are used by the frontend application at runtime, embedded during the build
     env:
-      - 'REACT_APP_FIREBASE_API_KEY=${_FIREBASE_API_KEY}'
-      - 'REACT_APP_FIREBASE_AUTH_DOMAIN=${_FIREBASE_AUTH_DOMAIN}'
-      - 'REACT_APP_FIREBASE_PROJECT_ID=${_FIREBASE_PROJECT_ID}'
-      - 'REACT_APP_FIREBASE_STORAGE_BUCKET=${_FIREBASE_STORAGE_BUCKET}'
-      - 'REACT_APP_FIREBASE_MESSAGING_SENDER_ID=${_FIREBASE_MESSAGING_SENDER_ID}'
-      - 'REACT_APP_FIREBASE_APP_ID=${_FIREBASE_APP_ID}'
-
-  # Save npm cache
-  - id: 'Save npm cache'
-    name: 'node:23-alpine' # Use node image to ensure node_modules is accessible
-    entrypoint: sh # Changed from bash to sh for Alpine compatibility
-    args: ['-c', 'tar -czf npm-cache.tar.gz node_modules']
-    dir: 'frontend'
-
-  - id: 'Upload npm cache'
-    name: 'gcr.io/cloud-builders/gsutil'
-    args: ['cp', 'npm-cache.tar.gz', 'gs://${_FRONTEND_CACHE_BUCKET}/npm-cache.tar.gz']
-    dir: 'frontend'
+      - 'REACT_APP_FIREBASE_API_KEY=${FIREBASE_API_KEY}'
+      - 'REACT_APP_FIREBASE_AUTH_DOMAIN=${FIREBASE_AUTH_DOMAIN}'
+      - 'REACT_APP_FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}'
+      - 'REACT_APP_FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET}'
+      - 'REACT_APP_FIREBASE_MESSAGING_SENDER_ID=${FIREBASE_MESSAGING_SENDER_ID}'
+      - 'REACT_APP_FIREBASE_APP_ID=${FIREBASE_APP_ID}'
 
   # Push the Docker image to the container registry
   - id: 'Push frontend image'
     name: 'gcr.io/cloud-builders/docker'
     args: ['push', '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/${_SERVICE_NAME}:${SHORT_SHA}']
+
+  # Tag the image as 'latest' for caching in future builds
+  - id: 'Tag frontend image as latest'
+    name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'tag'
+      - '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/${_SERVICE_NAME}:${SHORT_SHA}'
+      - '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/${_SERVICE_NAME}:latest'
+
+  # Push the 'latest' tag
+  - id: 'Push frontend latest tag'
+    name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/${_SERVICE_NAME}:latest']
 
   # Deploy the frontend service to Cloud Run
   - id: 'Deploy frontend to Cloud Run'
@@ -73,6 +63,7 @@ steps:
     dir: 'frontend'
     secretEnv:
       # These names must match the 'env' names defined in the 'availableSecrets' section
+      # These secrets are injected into the Cloud Run container at runtime
       - 'CONTEXT_MANAGER_URL'
       - 'FIREBASE_API_KEY'
       - 'FIREBASE_AUTH_DOMAIN'
@@ -86,7 +77,7 @@ substitutions:
   _GAR_REPOSITORY: 'ccai-services'
   _SERVICE_NAME: frontend-app # Name of the Cloud Run service
   _REGION: us-central1 # GCP region for deployment
-  _FRONTEND_CACHE_BUCKET: '${PROJECT_ID}-frontend-build-cache' # New substitution for cache bucket
+  _FRONTEND_CACHE_BUCKET: '${PROJECT_ID}-frontend-build-cache' # This substitution is no longer strictly needed if cache steps are removed
 
 options:
   logging: CLOUD_LOGGING_ONLY
@@ -96,6 +87,7 @@ availableSecrets:
   - versionName: projects/${PROJECT_ID}/secrets/CONTEXT_MANAGER_URL/versions/latest
     env: 'CONTEXT_MANAGER_URL'
   # Add Firebase secrets here
+  # These are used as build-time variables to embed config into the Docker image
   - versionName: projects/${PROJECT_ID}/secrets/FIREBASE_API_KEY/versions/latest
     env: 'FIREBASE_API_KEY'
   - versionName: projects/${PROJECT_ID}/secrets/FIREBASE_AUTH_DOMAIN/versions/latest

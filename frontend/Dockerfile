@@ -2,7 +2,7 @@
 FROM node:18-alpine as build
 WORKDIR /app
 COPY package*.json ./
-# npm install is now handled by Cloud Build directly for caching
+RUN npm ci
 COPY . .
 RUN npm run build
 
