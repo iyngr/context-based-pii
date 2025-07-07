@@ -1,6 +1,19 @@
 # Cloud Build configuration for the Frontend service
 
 steps:
+  # Debug step to verify environment variables
+  - id: 'Debug environment variables'
+    name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "CONTEXT_MANAGER_URL: $$CONTEXT_MANAGER_URL"
+        echo "FIREBASE_API_KEY: $$FIREBASE_API_KEY"
+    secretEnv:
+      - 'CONTEXT_MANAGER_URL'
+      - 'FIREBASE_API_KEY'
+
   # Build the Docker image for the frontend
   # This step will now handle dependency installation internally via the Dockerfile
   - id: 'Build frontend image'
