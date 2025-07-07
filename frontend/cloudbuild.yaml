@@ -38,6 +38,7 @@ steps:
       - 'REACT_APP_FIREBASE_APP_ID=$$FIREBASE_APP_ID'
       - '--build-arg'
       - 'REACT_APP_BACKEND_URL=$$CONTEXT_MANAGER_URL'
+      - '--no-cache' # Add --no-cache to force a fresh build
       - '--cache-from'
       - '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/${_SERVICE_NAME}:latest'
       - '.'
