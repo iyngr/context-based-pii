@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Button, Box, Typography, Alert } from '@mui/material';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
+import { getAuth } from "firebase/auth"; // Import Firebase auth
 
-const UploadConversation = ({ setView, setJobId, idToken }) => {
+const UploadConversation = ({ setView, setJobId }) => {
     const [error, setError] = useState(null);
 
     const handleFileChange = (event) => {
@@ -21,6 +22,12 @@ const UploadConversation = ({ setView, setJobId, idToken }) => {
             try {
                 const conversation = JSON.parse(e.target.result);
                 try {
+                    const auth = getAuth();
+                    if (!auth.currentUser) {
+                        throw new Error("User not authenticated.");
+                    }
+                    const idToken = await auth.currentUser.getIdToken(true); // Get fresh token
+
                     const response = await fetch(`/api/initiate-redaction`, {
                         method: 'POST',
                         headers: {

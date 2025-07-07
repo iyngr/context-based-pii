@@ -10,8 +10,9 @@ import {
     ListItemText,
     Divider,
 } from '@mui/material';
+import { getAuth } from "firebase/auth"; // Import Firebase auth
 
-const ChatSimulator = ({ setView, setJobId, idToken }) => {
+const ChatSimulator = ({ setView, setJobId }) => {
     const [messages, setMessages] = useState([]);
     const [customerInput, setCustomerInput] = useState('');
     const [agentInput, setAgentInput] = useState('');
@@ -29,6 +30,12 @@ const ChatSimulator = ({ setView, setJobId, idToken }) => {
 
     const handleAnalyze = async () => {
         try {
+            const auth = getAuth();
+            if (!auth.currentUser) {
+                throw new Error("User not authenticated.");
+            }
+            const idToken = await auth.currentUser.getIdToken(true); // Get fresh token
+
             const response = await fetch(`/api/initiate-redaction`, {
                 method: 'POST',
                 headers: {
