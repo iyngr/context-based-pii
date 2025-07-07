@@ -27,7 +27,7 @@ COPY . .
 # The Create React App build script will automatically use the REACT_APP_* environment variables
 # declared as ARGs above.
 # Explicitly pass REACT_APP_BACKEND_URL to npm run build
-RUN REACT_APP_BACKEND_URL=$REACT_APP_BACKEND_URL npm run build
+RUN sh -c "REACT_APP_BACKEND_URL=$REACT_APP_BACKEND_URL npm run build"
 
 # Production stage
 FROM node:18-alpine
