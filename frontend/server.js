@@ -17,6 +17,7 @@ app.use('/api', createProxyMiddleware({
     pathRewrite: {
         '^/api': '', // remove /api prefix when forwarding to backend
     },
+    timeout: 300000, // 5 minutes timeout
     onProxyReq: (proxyReq, req, res) => {
         // Log the proxy request details
         console.log(`Proxying request: ${req.method} ${req.url} -> ${proxyReq.protocol}//${proxyReq.host}${proxyReq.path}`);
