@@ -67,8 +67,15 @@ def get_secret(secret_id, version_id="latest", project_id=None):
 
 # Get the frontend URL from an environment variable, with a fallback for local dev
 app = Flask(__name__)
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
-CORS(app, resources={r"/*": {"origins": FRONTEND_URL}})
+FRONTEND_URL = os.getenv("FRONTEND_URL") # Get the deployed frontend URL
+# Configure CORS to allow requests from the frontend
+# For local development, explicitly allow http://localhost:3000
+# For deployed frontend, allow the FRONTEND_URL environment variable
+allowed_origins = ["http://localhost:3000"]
+if FRONTEND_URL:
+    allowed_origins.append(FRONTEND_URL)
+
+CORS(app, resources={r"/*": {"origins": allowed_origins, "methods": ["GET", "POST", "OPTIONS"], "headers": ["Content-Type", "Authorization"]}})
 
 # --- Firebase Admin SDK Initialization ---
 try:
