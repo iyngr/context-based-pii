@@ -67,15 +67,13 @@ def get_secret(secret_id, version_id="latest", project_id=None):
 
 # Get the frontend URL from an environment variable, with a fallback for local dev
 app = Flask(__name__)
-FRONTEND_URL = os.getenv("FRONTEND_URL") # Get the deployed frontend URL
-# Configure CORS to allow requests from the frontend
-# For local development, explicitly allow http://localhost:3000
-# For deployed frontend, allow the FRONTEND_URL environment variable
-allowed_origins = ["http://localhost:3000"]
-if FRONTEND_URL:
-    allowed_origins.append(FRONTEND_URL)
 
-CORS(app, resources={r"/*": {"origins": allowed_origins, "methods": ["GET", "POST", "OPTIONS"], "headers": ["Content-Type", "Authorization"]}})
+# Configure CORS to allow requests from your frontend's origin.
+# Using a specific origin is more secure than allowing all origins with "*".
+# It's best practice to make this configurable via an environment variable.
+frontend_url = os.environ.get('FRONTEND_URL', 'https://frontend-app-315895523022.us-central1.run.app')
+
+CORS(app, resources={r"/*": {"origins": frontend_url}})
 
 # --- Firebase Admin SDK Initialization ---
 try:
@@ -245,9 +243,14 @@ def hello_world():
     """A simple hello world endpoint."""
     return "Hello, World! This is the Context Manager Service."
 
-@app.route('/initiate-redaction', methods=['POST'])
+@app.route('/initiate-redaction', methods=['POST', 'OPTIONS'])
 @firebase_auth_required
 def initiate_redaction():
+    if request.method == 'OPTIONS':
+        # Flask-Cors handles the OPTIONS preflight request automatically.
+        # This explicit check can be removed if Flask-Cors is configured for the whole app.
+        return jsonify({'status': 'ok'}), 200
+    
     """
     Receives a conversation transcript from the frontend,
     initiates the redaction process by publishing to Pub/Sub,
