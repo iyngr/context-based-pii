@@ -144,7 +144,7 @@ inspect_config:
         proximity:
           window_before: 50
         likelihood_adjustment:
-          fixed_likelihood: LIKELY
+          fixed_likelihood: VERY_LIKELY
   - info_types:
     - name: CREDIT_CARD_NUMBER
     - name: FINANCIAL_ACCOUNT_NUMBER
@@ -158,7 +158,7 @@ inspect_config:
         proximity:
           window_before: 50
         likelihood_adjustment:
-          fixed_likelihood: LIKELY
+          fixed_likelihood: VERY_LIKELY
   - info_types:
     - name: PHONE_NUMBER
     - name: EMAIL_ADDRESS
@@ -171,7 +171,7 @@ inspect_config:
         proximity:
           window_before: 50
         likelihood_adjustment:
-          fixed_likelihood: LIKELY
+          fixed_likelihood: VERY_LIKELY
   - info_types:
     - name: IMEI_HARDWARE_ID
     - name: MAC_ADDRESS
@@ -183,7 +183,7 @@ inspect_config:
         proximity:
           window_before: 60
         likelihood_adjustment:
-          fixed_likelihood: LIKELY
+          fixed_likelihood: VERY_LIKELY
   - info_types:
     - name: SOCIAL_HANDLE
     rules:
