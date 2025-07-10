@@ -1,0 +1,70 @@
+```mermaid
+stateDiagram-v2
+    [*] --> Frontend_App
+    Frontend_App --> Node_Proxy: User submits/upload transcript or starts chat
+    Node_Proxy --> Firebase_Auth: Authenticate user (if required)
+    Node_Proxy --> PubSub_Raw: Publish raw turn(s) to raw-transcripts Pub/Sub topic
+
+    PubSub_Raw --> Subscriber_Service: Triggers on new message
+
+    state Subscriber_Service {
+        [*] --> Init
+        Init --> Parse_Utterance: Parse transcript, detect participant role
+        Parse_Utterance --> Agent_Route: If Agent
+        Parse_Utterance --> Customer_Route: If Customer
+        Agent_Route --> Main_Service_Agent: POST /handle-agent-utterance
+        Customer_Route --> Main_Service_Customer: POST /handle-customer-utterance
+        Main_Service_Agent --> [*]
+        Main_Service_Customer --> [*]
+    }
+
+    Subscriber_Service --> Main_Service: HTTP POST (agent/customer utterance, conversation_id)
+
+    state Main_Service {
+        [*] --> Receive_Request
+        Receive_Request --> Fetch_Context: Load context from Redis (for customer)
+        Receive_Request --> Update_Context: Store expected PII context in Redis (for agent)
+        Fetch_Context --> Call_DLP
+        Update_Context --> [*]
+        Call_DLP --> DLP_API: Call Google DLP (with dynamic config based on context)
+        DLP_API --> Redact_Output: Receive redacted transcript
+        Redact_Output --> [*]
+    }
+
+    Main_Service --> PubSub_Redacted: Publish to redacted-transcripts Pub/Sub topic
+
+    PubSub_Redacted --> Transcript_Aggregator_Service: Triggers on new redacted message
+
+    state Transcript_Aggregator_Service {
+        [*] --> Buffer
+        Buffer --> Check_Complete: Aggregate, check if conversation complete
+        Check_Complete --> Rescan_Context: Optional re-scan for context-aware redaction
+        Rescan_Context --> Main_Service: (Possible feedback loop)
+        Check_Complete --> Archive: Store final transcript in GCS/Firestore
+        Archive --> [*]
+    }
+
+    Transcript_Aggregator_Service --> GCS_Final: Save final transcript to Cloud Storage
+    GCS_Final --> CCAI_Insights_Function: GCS event triggers upload to CCAI Insights API
+
+    state CCAI_Insights_Function {
+        [*] --> Upload_API: Upload transcript to CCAI Insights API
+        Upload_API --> [*]
+    }
+
+    CCAI_Insights_Function --> [*]
+
+    %% Key cloud resources and state stores
+    Main_Service --> Redis_Store: Read/write conversation context
+    Transcript_Aggregator_Service --> Firestore_Store: Store/lookup conversation data
+
+    %% Human-Readable Legend for clarity:
+    note right of Frontend_App: React UI
+    note right of Node_Proxy: Node.js proxy server
+    note right of Firebase_Auth: Firebase authentication
+    note right of Subscriber_Service: Cloud Function, parses and routes utterances
+    note right of Main_Service: Cloud Run service, manages context, applies DLP
+    note right of Transcript_Aggregator_Service: Cloud Run, aggregates, rescans, archives
+    note right of CCAI_Insights_Function: Cloud Function, uploads to Insights API
+
+```
