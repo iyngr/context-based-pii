@@ -1,0 +1,63 @@
+```mermaid
+sequenceDiagram
+    participant User as User (Browser)
+    participant FE as Frontend App (React)
+    participant Proxy as Node.js Proxy
+    participant Auth as Firebase Authentication
+    participant PubRaw as Pub/Sub: raw-transcripts
+    participant Sub as subscriber_service (Cloud Function)
+    participant Main as main_service (Cloud Run)
+    participant Redis as Redis (Context Store)
+    participant DLP as Google Cloud DLP API
+    participant PubRedacted as Pub/Sub: redacted-transcripts
+    participant Agg as transcript_aggregator_service (Cloud Run)
+    participant Firestore as Firestore
+    participant GCS as Cloud Storage (GCS)
+    participant InsightsFn as ccai_insights_function (Cloud Function)
+    participant Insights as CCAI Insights API
+
+    User->>FE: Enter transcript or chat message
+    FE->>Proxy: Send transcript data
+    Proxy->>Auth: Authenticate user (if needed)
+    Proxy->>PubRaw: Publish message (raw utterance)
+
+    PubRaw->>Sub: Trigger Cloud Function on message
+
+    alt Agent Utterance
+        Sub->>Main: POST /handle-agent-utterance (transcript, conversation_id)
+        Main->>Main: extract_expected_pii()
+        Main->>Redis: Store expected PII type for conversation_id (short TTL)
+        Main-->>Sub: 200 OK
+    else Customer Utterance
+        Sub->>Main: POST /handle-customer-utterance (transcript, conversation_id)
+        Main->>Redis: Retrieve expected PII context (if any)
+        Main->>Main: call_dlp_for_redaction(transcript, context)
+        Main->>DLP: Inspect & de-identify using dynamic config
+        DLP-->>Main: Redacted transcript
+        Main-->>Sub: Redacted transcript
+    end
+
+    Sub->>PubRedacted: Publish redacted transcript (with metadata)
+
+    PubRedacted->>Agg: Trigger transcript_aggregator_service
+
+    Agg->>Firestore: Buffer/aggregate by conversation_id
+    Agg->>Agg: Check if conversation complete or context requires re-scan
+    alt Context Re-Scan
+        Agg->>Main: POST /handle-customer-utterance (buffered transcript, context)
+        Main->>DLP: Inspect & de-identify with updated context
+        DLP-->>Main: Redacted transcript
+        Main-->>Agg: Updated redacted transcript
+    end
+    Agg->>GCS: Store final, redacted transcript
+
+    GCS->>InsightsFn: GCS event triggers Cloud Function
+
+    InsightsFn->>Insights: Upload transcript to CCAI Insights API
+    Insights-->>InsightsFn: 200 OK
+
+    %% Notes for clarity
+    Note over Main,DLP: Dynamic DLP config based on Redis context (multi-turn)
+    Note over Agg: Aggregates turns, can trigger context-based re-scans
+    Note over InsightsFn,Insights: Final storage & analysis
+```
