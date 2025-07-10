@@ -1,12 +1,12 @@
 graph LR
     subgraph Frontend Application
-        Q[User/Browser] --> R(Frontend App)
-        R --> S(Node.js Proxy Server)
+        Q[User/Browser] --> R[Frontend App]
+        R --> S[Node.js Proxy Server]
         S --> T[Firebase Authentication]
     end
 
     subgraph Ingestion & Initial Processing
-        S --> B(Raw Transcripts Pub/Sub Topic)
+        S --> B[Raw Transcripts Pub/Sub Topic]
         A[Agent Assist] --> B
         B --> C[Subscriber Service]
         C --> D[Secret Manager]
@@ -18,7 +18,7 @@ graph LR
         F --> G[Cloud Memorystore for Redis]
         E --> H[Cloud Data Loss Prevention (DLP)]
         C --> E
-        E --> I(Redacted Transcripts Pub/Sub Topic)
+        E --> I[Redacted Transcripts Pub/Sub Topic]
     end
 
     subgraph Aggregation & Storage
