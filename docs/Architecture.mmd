@@ -1,6 +1,6 @@
 graph LR
     subgraph Ingestion & Initial Processing
-        A[User/Agent Assist] --> B(Raw Transcripts Pub/Sub Topic)
+        A[User/Agent Assist] --> B[Raw Transcripts Pub/Sub Topic]
         B --> C[Subscriber Service]
         C --> D[Secret Manager]
     end
@@ -9,9 +9,9 @@ graph LR
         D --> E[Main Service]
         E --> F[Serverless VPC Access]
         F --> G[Cloud Memorystore for Redis]
-        E --> H[Cloud Data Loss Prevention (DLP)]
+        E --> H[Cloud Data Loss Prevention DLP]
         C --> E
-        E --> I(Redacted Transcripts Pub/Sub Topic)
+        E --> I[Redacted Transcripts Pub/Sub Topic]
     end
 
     subgraph Aggregation & Storage
