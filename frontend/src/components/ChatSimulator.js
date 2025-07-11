@@ -49,7 +49,7 @@ const ChatSimulator = ({ setView, setJobId }) => {
 
             if (role === 'AGENT') {
                 // Agent utterance: just store context, no redaction needed for display
-                await fetch(`/api/handle-agent-utterance`, {
+                const response = await fetch(`/api/handle-agent-utterance`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -60,6 +60,12 @@ const ChatSimulator = ({ setView, setJobId }) => {
                         transcript: text,
                     }),
                 });
+                if (!response.ok) {
+                    console.error('Failed to store agent context');
+                    alert('Error: Could not store agent context. Real-time redaction may not work.');
+                } else {
+                    console.log('Agent context stored successfully.');
+                }
             } else {
                 // Customer utterance: call real-time redaction
                 const response = await fetch(`/api/redact-utterance-realtime`, {

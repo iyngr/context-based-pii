@@ -362,8 +362,10 @@ def handle_agent_utterance():
         try:
             context_key = f"context:{conversation_id}"
             context_value = {"expected_pii_type": expected_pii_type, "timestamp": time.time()}
-            redis_client.setex(context_key, CONTEXT_TTL_SECONDS, json.dumps(context_value))
-            logger.info(f"Stored context in Redis for conversation_id: {conversation_id}, context_value: {context_value}")
+            context_value_json = json.dumps(context_value)
+            logger.info(f"Attempting to store context in Redis. Key: {context_key}, Value: {context_value_json}, TTL: {CONTEXT_TTL_SECONDS}")
+            redis_client.setex(context_key, CONTEXT_TTL_SECONDS, context_value_json)
+            logger.info(f"Successfully stored context in Redis for conversation_id: {conversation_id}")
             return jsonify({"message": "Agent utterance processed, context stored.", "expected_pii": expected_pii_type}), 200
         except redis.exceptions.RedisError as e:
             logger.error(f"Redis error during context storage for conversation_id: {conversation_id}. Error: {str(e)}")
