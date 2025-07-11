@@ -36,3 +36,14 @@ This file tracks the project's progress using a task list format.
 2025-07-07 04:40:18 - Removed automatic Google Sign-In call from `frontend/src/index.js` to prevent blocking of initial UI rendering.
 2025-07-07 04:56:25 - Rebuilt frontend application after reinstalling dependencies and removing automatic Google Sign-In call.
 2025-07-03 15:40:00 - Consolidated and updated progress based on recent source code analysis and chat history.
+2025-07-12 01:27:07 - **New Task:** Implement real-time, utterance-by-utterance PII redaction for the chat mode UI.
+    *   **Current Tasks:**
+        *   Modify `frontend/src/components/ChatSimulator.js` to send individual utterances to a new `main_service` endpoint for real-time redaction.
+        *   Create a new endpoint in `main_service/main.py` (e.g., `/redact-utterance-realtime`) to handle single utterance redaction, leveraging existing Redis context.
+        *   Ensure the new `main_service` endpoint does not trigger the Pub/Sub flow for `redacted-transcripts`.
+        *   Update `frontend/src/components/ChatSimulator.js` to display the redacted content immediately upon receiving it from the new `main_service` endpoint.
+2025-07-12 01:50:05 - **New Task:** Optimize full aggregated transcript display speed in UI.
+    *   **Current Tasks:**
+        *   Modify `transcript_aggregator_service/main.py` to store the complete redacted transcript in Redis after aggregation.
+        *   Modify `main_service/main.py`'s `/redaction-status/{jobId}` endpoint to first attempt retrieving the aggregated transcript from Redis for immediate display.
+        *   Ensure the existing GCS upload and `ccai_insights_function` trigger from `transcript_aggregator_service` remain unaffected and run in the background.
