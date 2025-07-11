@@ -32,13 +32,10 @@ steps:
       POLLING_INTERVAL_SECONDS=5
     - '--min-instances=0'
     - '--max-instances=1'
-  secretEnv:
-    - REDIS_HOST
-    - REDIS_PORT
 availableSecrets:
   secretManager:
   - versionName: projects/${PROJECT_ID}/secrets/CONTEXT_MANAGER_URL/versions/latest
-    env: 'MAIN_SERVICE_URL' # Keep this here so the secret is available to the build process, but it's not injected as an env var
+    env: 'MAIN_SERVICE_URL'
   - versionName: projects/${PROJECT_ID}/secrets/CONTEXT_MANAGER_REDIS_HOST/versions/latest
     env: 'REDIS_HOST'
   - versionName: projects/${PROJECT_ID}/secrets/CONTEXT_MANAGER_REDIS_PORT/versions/latest
