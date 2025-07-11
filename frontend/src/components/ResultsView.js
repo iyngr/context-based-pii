@@ -59,7 +59,7 @@ const ResultsView = ({ jobId, setView, idToken }) => {
         }, 3000);
 
         return () => clearInterval(poll);
-    }, [jobId]);
+    }, [jobId, idToken]);
 
     const handleScroll = (scrolledPanel) => {
         if (isScrolling.current) return;

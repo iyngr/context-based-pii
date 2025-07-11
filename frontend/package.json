@@ -14,7 +14,7 @@
         "http-proxy-middleware": "latest",
         "react": "latest",
         "react-dom": "latest",
-        "react-scripts": "latest"
+        "react-scripts": "^5.0.1"
     },
     "scripts": {
         "start": "node server.js",
@@ -40,5 +40,11 @@
             "last 1 firefox version",
             "last 1 safari version"
         ]
+    },
+    "overrides": {
+        "nth-check": "^2.0.1",
+        "postcss": "^8.4.31",
+        "svgo": "^2.8.0",
+        "webpack-dev-server": "^5.2.2"
     }
 }

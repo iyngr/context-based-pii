@@ -1,8 +1,8 @@
-Flask
-google-cloud-firestore
-tenacity
-google-cloud-pubsub
-gunicorn
-google-cloud-storage
-protobuf
-pytz
+Flask>=3.1.1
+google-cloud-firestore>=2.20.0
+tenacity>=9.0.0
+google-cloud-pubsub>=2.31.0
+gunicorn>=23.0.0
+google-cloud-storage>=2.18.0
+protobuf>=4.25.8
+pytz>=2024.1

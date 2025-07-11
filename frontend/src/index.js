@@ -10,11 +10,13 @@ const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
 // Function to handle Google Sign-In
+// eslint-disable-next-line no-unused-vars
 const handleGoogleSignIn = () => {
     signInWithPopup(auth, provider)
         .then((result) => {
             // This gives you a Google Access Token. You can use it to access the Google API.
             const credential = GoogleAuthProvider.credentialFromResult(result);
+            // eslint-disable-next-line no-unused-vars
             const token = credential.accessToken;
             // The signed-in user info.
             const user = result.user;
