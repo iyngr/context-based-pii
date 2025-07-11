@@ -298,13 +298,23 @@ def receive_conversation_ended_event():
                 continue # Skip malformed utterance
 
         if not entries_for_gcs:
-            logger.warning(f"No utterances found in Redis for conversation ID: {conversation_id} during final aggregation. Skipping GCS upload.", extra={"json_fields": {"event": "gcs_upload_skipped", "conversation_id": conversation_id, "reason": "no_utterances_in_redis"}})
-            return jsonify({'status': 'skipped', 'message': 'No utterances found in Redis, skipping GCS upload'}), 200
+            logger.warning(f"No utterances found in Redis for conversation ID: {conversation_id} during final aggregation. Skipping processing.", extra={"json_fields": {"event": "processing_skipped", "conversation_id": conversation_id, "reason": "no_utterances_in_redis"}})
+            return jsonify({'status': 'skipped', 'message': 'No utterances found in Redis, skipping processing'}), 200
 
         # Sort entries by original_entry_index to ensure correct order
         entries_for_gcs.sort(key=lambda x: x.get('original_entry_index', 0))
 
-        # 1. Upload Aggregated Transcript to GCS
+        # 1. Store the final aggregated transcript in Redis for fast UI retrieval
+        final_transcript_payload = {"transcript_segments": entries_for_gcs}
+        final_transcript_key = f"final_transcript:{conversation_id}"
+        try:
+            redis_client.set(final_transcript_key, json.dumps(final_transcript_payload), ex=CONTEXT_TTL_SECONDS)
+            logger.info(f"Stored final aggregated transcript in Redis for conversation {conversation_id}.", extra={"json_fields": {"event": "redis_store_final_transcript", "conversation_id": conversation_id}})
+        except Exception as e:
+            logger.error(f"Error storing final transcript in Redis for conversation {conversation_id}: {e}", exc_info=True)
+            # Do not fail the whole process, GCS upload is still the primary goal.
+
+        # 2. Upload Aggregated Transcript to GCS (background task)
         @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10),
                retry=retry_if_exception_type((InternalServerError, ServiceUnavailable, DeadlineExceeded)))
         def _gcs_upload_with_retry(bucket_name, filename, content):
@@ -328,15 +338,15 @@ def receive_conversation_ended_event():
             gcs_transcript_uri = f"gs://{AGGREGATED_TRANSCRIPTS_BUCKET}/{gcs_transcript_filename}"
             logger.info(f"Uploaded final aggregated transcript to GCS: {gcs_transcript_uri}", extra={"json_fields": {"event": "gcs_upload_success_final", "conversation_id": conversation_id, "gcs_uri": gcs_transcript_uri}})
 
-            # After successful upload, delete the Redis list
+            # After successful upload, delete the temporary utterance list from Redis
             redis_client.delete(utterance_key)
-            logger.info(f"Redis: Deleted utterance list for conversation {conversation_id}.", extra={"json_fields": {"event": "redis_delete", "conversation_id": conversation_id}})
+            logger.info(f"Redis: Deleted temporary utterance list for conversation {conversation_id}.", extra={"json_fields": {"event": "redis_delete_utterance_list", "conversation_id": conversation_id}})
 
         except Exception as e:
             logger.error(f"Error during final GCS upload or Redis deletion. Exception: {e}", exc_info=True, extra={"json_fields": {"event": "gcs_upload_or_redis_delete_error_final", "conversation_id": conversation_id, "error_message": str(e)}})
             return jsonify({'error': f'Failed to process and upload final transcript: {e}'}), 500
 
-        return jsonify({'status': 'success', 'message': 'Conversation ended event processed and final transcript uploaded to GCS'}), 200
+        return jsonify({'status': 'success', 'message': 'Conversation ended event processed, final transcript stored in Redis and uploaded to GCS'}), 200
     except Exception as e:
         logger.error(f"Unhandled exception in /conversation-ended. Exception: {e}, Type: {type(e)}, Repr: {repr(e)}", exc_info=True, extra={"json_fields": {"event": "unhandled_exception", "error_message": str(e), "error_type": str(type(e)), "error_repr": repr(e)}})
         return jsonify({'error': f'An unexpected error occurred: {e}'}), 500

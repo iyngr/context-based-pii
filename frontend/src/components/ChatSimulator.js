@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     Box,
     TextField,
@@ -11,20 +11,72 @@ import {
     Divider,
 } from '@mui/material';
 import { getAuth } from "firebase/auth"; // Import Firebase auth
+import { v4 as uuidv4 } from 'uuid'; // Import uuid
 
 const ChatSimulator = ({ setView, setJobId }) => {
     const [messages, setMessages] = useState([]);
     const [customerInput, setCustomerInput] = useState('');
     const [agentInput, setAgentInput] = useState('');
+    const conversationIdRef = useRef(null);
 
-    const handleSendMessage = (speaker, text) => {
+    useEffect(() => {
+        // Generate a unique conversation ID when the component mounts
+        if (!conversationIdRef.current) {
+            conversationIdRef.current = uuidv4();
+        }
+    }, []);
+
+    const handleSendMessage = async (speaker, text) => {
         if (text.trim() === '') return;
         const role = speaker === 'Customer' ? 'END_USER' : 'AGENT';
-        setMessages([...messages, { speaker: role, text }]);
+        const originalMessage = { speaker: role, text };
+
+        // Add original message to the display immediately
+        setMessages(prevMessages => [...prevMessages, originalMessage]);
+
         if (speaker === 'Customer') {
             setCustomerInput('');
         } else {
             setAgentInput('');
+        }
+
+        // Call real-time redaction endpoint
+        try {
+            const auth = getAuth();
+            if (!auth.currentUser) {
+                throw new Error("User not authenticated.");
+            }
+            const idToken = await auth.currentUser.getIdToken(true);
+
+            const response = await fetch(`/api/redact-utterance-realtime`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${idToken}`,
+                },
+                body: JSON.stringify({
+                    conversation_id: conversationIdRef.current,
+                    utterance: text,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const redactedMessage = { speaker: role, text: data.redacted_utterance };
+
+            // Replace the last message (the original one) with the redacted version
+            setMessages(prevMessages => {
+                const newMessages = [...prevMessages];
+                newMessages[newMessages.length - 1] = redactedMessage;
+                return newMessages;
+            });
+
+        } catch (error) {
+            console.error('Error redacting utterance:', error);
+            // Optionally, show an error to the user or handle it gracefully
         }
     };
 

@@ -14,7 +14,8 @@
         "http-proxy-middleware": "latest",
         "react": "latest",
         "react-dom": "latest",
-        "react-scripts": "latest"
+        "react-scripts": "latest",
+        "uuid": "^11.1.0"
     },
     "scripts": {
         "start": "node server.js",

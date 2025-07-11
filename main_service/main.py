@@ -415,6 +415,36 @@ def handle_customer_utterance():
 
     return jsonify({"redacted_transcript": redacted_transcript, "context_used": retrieved_context is not None}), 200
 
+@app.route('/redact-utterance-realtime', methods=['POST'])
+@firebase_auth_required
+def redact_utterance_realtime():
+    """
+    Handles a single utterance for real-time redaction without full job processing.
+    """
+    data = request.get_json()
+    if not data or 'conversation_id' not in data or 'utterance' not in data:
+        return jsonify({"error": "Missing conversation_id or utterance"}), 400
+
+    conversation_id = data['conversation_id']
+    utterance = data['utterance']
+    retrieved_context = None
+
+    if redis_client:
+        try:
+            context_key = f"context:{conversation_id}"
+            context_data_str = redis_client.get(context_key)
+            if context_data_str:
+                retrieved_context = json.loads(context_data_str)
+                logger.info(f"Retrieved context for real-time redaction for conversation_id: {conversation_id}")
+        except redis.exceptions.RedisError as e:
+            logger.error(f"Redis error during real-time context retrieval for {conversation_id}: {str(e)}")
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decode error for real-time context from Redis for {conversation_id}: {str(e)}")
+
+    redacted_utterance = call_dlp_for_redaction(utterance, retrieved_context)
+
+    return jsonify({"redacted_utterance": redacted_utterance}), 200
+
 @app.route('/redaction-status/<job_id>', methods=['GET'])
 @firebase_auth_required
 def get_redaction_status(job_id):
@@ -423,14 +453,39 @@ def get_redaction_status(job_id):
     for a given job ID from CCAI Conversation Insights.
     Requires Firebase authentication.
     """
-    if not ccai_insights_client:
-        logger.error("CCAI Conversation Insights client not available for /redaction-status.")
-        return jsonify({"error": "CCAI Insights client not available"}), 503
+    if not redis_client:
+        logger.error("Redis client not available for /redaction-status.")
+        return jsonify({"error": "Redis client not available"}), 503
 
     try:
-        # The jobId from the frontend is the conversation_id in CCAI Insights
-        conversation_name = f"projects/{GCP_PROJECT_ID_FOR_SECRETS}/locations/us-central1/conversations/{job_id}" # Assuming us-central1 location
+        # 1. Check Redis for the final aggregated transcript first for a fast response
+        final_transcript_str = redis_client.get(f"final_transcript:{job_id}")
+        if final_transcript_str:
+            logger.info(f"Found final aggregated transcript in Redis for job {job_id}.")
+            final_transcript = json.loads(final_transcript_str)
+            original_conversation_str = redis_client.get(f"original_conversation:{job_id}")
+            original_transcript_segments = json.loads(original_conversation_str) if original_conversation_str else []
+            
+            return jsonify({
+                "status": "DONE",
+                "original_conversation": {
+                    "transcript": {
+                        "transcript_segments": original_transcript_segments
+                    }
+                },
+                "redacted_conversation": {
+                    "transcript": {
+                        "transcript_segments": final_transcript.get("transcript_segments", [])
+                    }
+                }
+            }), 200
 
+        # 2. If not in Redis, check CCAI Insights as the fallback/final source of truth
+        if not ccai_insights_client:
+            logger.error("CCAI Conversation Insights client not available for /redaction-status.")
+            return jsonify({"error": "CCAI Insights client not available"}), 503
+
+        conversation_name = f"projects/{GCP_PROJECT_ID_FOR_SECRETS}/locations/us-central1/conversations/{job_id}"
         request = contact_center_insights_v1.GetConversationRequest(
             name=conversation_name,
             view=contact_center_insights_v1.types.ConversationView.FULL
@@ -439,95 +494,31 @@ def get_redaction_status(job_id):
         try:
             response = ccai_insights_client.get_conversation(request=request)
             logger.info(f"Successfully retrieved conversation {job_id} from CCAI Insights.")
-
-            # Extract transcript segments in the desired format for the frontend
             transcript_segments = []
             for segment in response.transcript.transcript_segments:
-                # Use channel_tag for speaker identification, as participants field is not available
-                # Channel 1 typically represents the customer, Channel 2 the agent.
-                speaker = "UNKNOWN"
-                if segment.channel_tag == 1:
-                    speaker = "END_USER"
-                elif segment.channel_tag == 2:
-                    speaker = "AGENT"
-                # If speaker_tag is available and preferred, you could use:
-                # speaker = segment.speaker_tag if segment.speaker_tag else "UNKNOWN"
+                speaker = "END_USER" if segment.channel_tag == 1 else "AGENT"
+                transcript_segments.append({"speaker": speaker, "text": segment.text})
 
-                transcript_segments.append({
-                    "speaker": speaker,
-                    "text": segment.text
-                })
-            
-            # Determine status based on whether transcript segments are available
-            # In a real scenario, you might have a more robust way to determine "DONE" vs "PROCESSING"
-            # For now, if we can retrieve the conversation, we assume it's DONE.
             status = "DONE" if transcript_segments else "PROCESSING"
-
-            # Retrieve original conversation from Redis
-            original_conversation_str = None
-            if redis_client:
-                try:
-                    original_conversation_str = redis_client.get(f"original_conversation:{job_id}")
-                    if original_conversation_str:
-                        original_transcript_segments = json.loads(original_conversation_str)
-                        logger.info(f"Retrieved original transcript for {job_id} from Redis.")
-                    else:
-                        original_transcript_segments = []
-                        logger.warning(f"Original transcript not found in Redis for {job_id}.")
-                except redis.exceptions.RedisError as e:
-                    logger.error(f"Redis error retrieving original transcript for {job_id}: {str(e)}")
-                    original_transcript_segments = [] # Fallback to empty list on error
-                except json.JSONDecodeError as e:
-                    logger.error(f"JSON decode error for original transcript from Redis for {job_id}: {str(e)}")
-                    original_transcript_segments = [] # Fallback to empty list on error
-            else:
-                original_transcript_segments = []
-                logger.warning("Redis client not available, cannot retrieve original transcript.")
+            original_conversation_str = redis_client.get(f"original_conversation:{job_id}")
+            original_transcript_segments = json.loads(original_conversation_str) if original_conversation_str else []
 
             return jsonify({
                 "status": status,
-                "original_conversation": { # New field for original conversation
-                    "transcript": {
-                        "transcript_segments": original_transcript_segments
-                    }
-                },
-                "redacted_conversation": { # Renamed for clarity
-                    "transcript": {
-                        "transcript_segments": transcript_segments
-                    }
-                }
+                "original_conversation": {"transcript": {"transcript_segments": original_transcript_segments}},
+                "redacted_conversation": {"transcript": {"transcript_segments": transcript_segments}}
             }), 200
 
         except NotFound:
-            logger.info(f"Conversation {job_id} not yet found in CCAI Insights. Still processing or not yet ingested.")
-            # Retrieve original conversation even if redacted is not ready
-            original_conversation_str = None
-            if redis_client:
-                try:
-                    original_conversation_str = redis_client.get(f"original_conversation:{job_id}")
-                    if original_conversation_str:
-                        original_transcript_segments = json.loads(original_conversation_str)
-                    else:
-                        original_transcript_segments = []
-                except Exception as e:
-                    logger.error(f"Error retrieving original transcript during NotFound for {job_id}: {str(e)}")
-                    original_transcript_segments = []
-            else:
-                original_transcript_segments = []
-
+            logger.info(f"Conversation {job_id} not yet found in Redis or CCAI Insights. Still processing.")
+            original_conversation_str = redis_client.get(f"original_conversation:{job_id}")
+            original_transcript_segments = json.loads(original_conversation_str) if original_conversation_str else []
+            
             return jsonify({
                 "status": "PROCESSING",
                 "message": "Conversation not yet available",
-                "original_conversation": {
-                    "transcript": {
-                        "transcript_segments": original_transcript_segments
-                    }
-                },
-                "redacted_conversation": {
-                    "transcript": {
-                        "transcript_segments": [] # Redacted is empty if not found
-                    }
-                }
+                "original_conversation": {"transcript": {"transcript_segments": original_transcript_segments}},
+                "redacted_conversation": {"transcript": {"transcript_segments": []}}
             }), 200
         except PermissionDenied as e:
             logger.error(f"Permission denied to access conversation {job_id} in CCAI Insights: {str(e)}")
