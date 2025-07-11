@@ -40,7 +40,6 @@ const ChatSimulator = ({ setView, setJobId }) => {
             setAgentInput('');
         }
 
-        // Call real-time redaction endpoint
         try {
             const auth = getAuth();
             if (!auth.currentUser) {
@@ -48,34 +47,49 @@ const ChatSimulator = ({ setView, setJobId }) => {
             }
             const idToken = await auth.currentUser.getIdToken(true);
 
-            const response = await fetch(`/api/redact-utterance-realtime`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${idToken}`,
-                },
-                body: JSON.stringify({
-                    conversation_id: conversationIdRef.current,
-                    utterance: text,
-                }),
-            });
+            if (role === 'AGENT') {
+                // Agent utterance: just store context, no redaction needed for display
+                await fetch(`/api/handle-agent-utterance`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${idToken}`,
+                    },
+                    body: JSON.stringify({
+                        conversation_id: conversationIdRef.current,
+                        transcript: text,
+                    }),
+                });
+            } else {
+                // Customer utterance: call real-time redaction
+                const response = await fetch(`/api/redact-utterance-realtime`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${idToken}`,
+                    },
+                    body: JSON.stringify({
+                        conversation_id: conversationIdRef.current,
+                        utterance: text,
+                    }),
+                });
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const redactedMessage = { speaker: role, text: data.redacted_utterance };
+
+                // Replace the last message (the original one) with the redacted version
+                setMessages(prevMessages => {
+                    const newMessages = [...prevMessages];
+                    newMessages[newMessages.length - 1] = redactedMessage;
+                    return newMessages;
+                });
             }
-
-            const data = await response.json();
-            const redactedMessage = { speaker: role, text: data.redacted_utterance };
-
-            // Replace the last message (the original one) with the redacted version
-            setMessages(prevMessages => {
-                const newMessages = [...prevMessages];
-                newMessages[newMessages.length - 1] = redactedMessage;
-                return newMessages;
-            });
-
         } catch (error) {
-            console.error('Error redacting utterance:', error);
+            console.error('Error processing utterance:', error);
             // Optionally, show an error to the user or handle it gracefully
         }
     };
