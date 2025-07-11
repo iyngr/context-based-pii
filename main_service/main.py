@@ -361,17 +361,17 @@ def handle_agent_utterance():
     if expected_pii_type and redis_client:
         try:
             context_key = f"context:{conversation_id}"
-            # Use time.time() for a standard Unix timestamp
             context_value = {"expected_pii_type": expected_pii_type, "timestamp": time.time()}
-            redis_client.setex(context_key, CONTEXT_TTL_SECONDS, json.dumps(context_value)) # Store as JSON string
+            redis_client.setex(context_key, CONTEXT_TTL_SECONDS, json.dumps(context_value))
             logger.info(f"Stored context in Redis for conversation_id: {conversation_id}, context_value: {context_value}")
             return jsonify({"message": "Agent utterance processed, context stored.", "expected_pii": expected_pii_type}), 200
-        except redis.exceptions.RedisError as e: # redis-py library still raises redis.exceptions
+        except redis.exceptions.RedisError as e:
             logger.error(f"Redis error during context storage for conversation_id: {conversation_id}. Error: {str(e)}")
             return jsonify({"error": "Failed to store context in Redis"}), 500
     elif not redis_client:
         return jsonify({"error": "Redis client not available"}), 503
-
+    
+    logger.info(f"No expected PII type found for conversation_id: {conversation_id}")
     return jsonify({"message": "Agent utterance processed, no specific PII context to store."}), 200
 
 @app.route('/handle-customer-utterance', methods=['POST'])
@@ -435,7 +435,9 @@ def redact_utterance_realtime():
             context_data_str = redis_client.get(context_key)
             if context_data_str:
                 retrieved_context = json.loads(context_data_str)
-                logger.info(f"Retrieved context for real-time redaction for conversation_id: {conversation_id}")
+                logger.info(f"Retrieved context for real-time redaction for conversation_id: {conversation_id}, context: {retrieved_context}")
+            else:
+                logger.info(f"No context found in Redis for real-time redaction for conversation_id: {conversation_id}")
         except redis.exceptions.RedisError as e:
             logger.error(f"Redis error during real-time context retrieval for {conversation_id}: {str(e)}")
         except json.JSONDecodeError as e:
