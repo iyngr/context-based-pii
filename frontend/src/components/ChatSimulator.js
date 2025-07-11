@@ -48,7 +48,7 @@ const ChatSimulator = ({ setView, setJobId }) => {
             const idToken = await auth.currentUser.getIdToken(true);
 
             if (role === 'AGENT') {
-                // Agent utterance: just store context, no redaction needed for display
+                // Agent utterance: call handle-agent-utterance and get redacted text
                 const response = await fetch(`/api/handle-agent-utterance`, {
                     method: 'POST',
                     headers: {
@@ -60,12 +60,20 @@ const ChatSimulator = ({ setView, setJobId }) => {
                         transcript: text,
                     }),
                 });
+
                 if (!response.ok) {
-                    console.error('Failed to store agent context');
-                    alert('Error: Could not store agent context. Real-time redaction may not work.');
-                } else {
-                    console.log('Agent context stored successfully.');
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
+
+                const data = await response.json();
+                const redactedMessage = { speaker: role, text: data.redacted_transcript };
+
+                // Replace the last message (the original one) with the redacted version
+                setMessages(prevMessages => {
+                    const newMessages = [...prevMessages];
+                    newMessages[newMessages.length - 1] = redactedMessage;
+                    return newMessages;
+                });
             } else {
                 // Customer utterance: call real-time redaction
                 const response = await fetch(`/api/redact-utterance-realtime`, {
