@@ -6,3 +6,5 @@ gunicorn
 google-cloud-storage
 protobuf
 pytz
+redis
+google-cloud-secret-manager
