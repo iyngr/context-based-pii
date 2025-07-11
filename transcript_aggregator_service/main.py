@@ -116,11 +116,11 @@ else:
 CONTEXT_TTL_SECONDS = int(os.getenv('CONTEXT_TTL_SECONDS', 3600)) # Default to 1 hour
 
 # Main Service URL for sending aggregated transcripts
-MAIN_SERVICE_URL = os.getenv('MAIN_SERVICE_URL')
+MAIN_SERVICE_URL_SECRET_ID = "CONTEXT_MANAGER_URL"
+MAIN_SERVICE_URL = get_secret(MAIN_SERVICE_URL_SECRET_ID)
 if not MAIN_SERVICE_URL:
-    logger.critical("MAIN_SERVICE_URL environment variable not set. Cannot forward aggregated transcripts.")
-    # Depending on deployment strategy, you might want to exit here.
-    # For now, we'll just log a critical error.
+    logger.critical(f"Critical: MAIN_SERVICE_URL secret ('{MAIN_SERVICE_URL_SECRET_ID}') could not be fetched. Cannot forward aggregated transcripts. Exiting.")
+    exit(1) # Exit if this critical dependency is not met
 
 app = Flask(__name__)
 
