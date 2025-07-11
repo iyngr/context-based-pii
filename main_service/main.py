@@ -362,7 +362,11 @@ def handle_agent_utterance():
     if expected_pii_type and redis_client:
         try:
             context_key = f"context:{conversation_id}"
-            context_value = {"expected_pii_type": expected_pii_type, "timestamp": time.time()}
+            context_value = {
+                "expected_pii_type": expected_pii_type,
+                "agent_transcript": transcript,
+                "timestamp": time.time()
+            }
             context_value_json = json.dumps(context_value)
             logger.info(f"Attempting to store context in Redis. Key: {context_key}, Value: {context_value_json}, TTL: {CONTEXT_TTL_SECONDS}")
             redis_client.setex(context_key, CONTEXT_TTL_SECONDS, context_value_json)
@@ -446,7 +450,16 @@ def redact_utterance_realtime():
         except json.JSONDecodeError as e:
             logger.error(f"JSON decode error for real-time context from Redis for {conversation_id}: {str(e)}")
 
-    redacted_utterance = call_dlp_for_redaction(utterance, retrieved_context)
+    if retrieved_context and "agent_transcript" in retrieved_context:
+        # Combine agent and customer utterances for context
+        combined_text = f"{retrieved_context['agent_transcript']}\n{utterance}"
+        full_redacted_text = call_dlp_for_redaction(combined_text, retrieved_context)
+        # Extract the customer's redacted part
+        # The redacted text will have the same number of lines, so we can split and take the last part
+        redacted_utterance = full_redacted_text.splitlines()[-1]
+    else:
+        # Fallback to old behavior if context is missing agent_transcript
+        redacted_utterance = call_dlp_for_redaction(utterance, retrieved_context)
 
     return jsonify({"redacted_utterance": redacted_utterance}), 200
 
