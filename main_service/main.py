@@ -345,7 +345,7 @@ def initiate_redaction():
 def handle_agent_utterance():
     """
     Handles the agent's utterance, extracts potential PII requests,
-    and stores context in Redis.
+    stores context in Redis, and returns a redacted version of the utterance.
     """
     data = request.get_json()
     if not data or 'conversation_id' not in data or 'transcript' not in data:
@@ -354,32 +354,34 @@ def handle_agent_utterance():
     conversation_id = data['conversation_id']
     transcript = data['transcript']
 
-    # Placeholder for PII request extraction logic
-    # This function would analyze the transcript and return an expected PII type
-    # e.g., "PHONE_NUMBER", "EMAIL_ADDRESS", or None
+    # Redact the agent's utterance. Context is None as it's the agent speaking.
+    redacted_transcript = call_dlp_for_redaction(transcript, context=None)
+
+    # Check for expected PII to store context for the next customer utterance.
     expected_pii_type = extract_expected_pii(transcript)
 
-    if expected_pii_type and redis_client:
-        try:
-            context_key = f"context:{conversation_id}"
-            context_value = {
-                "expected_pii_type": expected_pii_type,
-                "agent_transcript": transcript,
-                "timestamp": time.time()
-            }
-            context_value_json = json.dumps(context_value)
-            logger.info(f"Attempting to store context in Redis. Key: {context_key}, Value: {context_value_json}, TTL: {CONTEXT_TTL_SECONDS}")
-            redis_client.setex(context_key, CONTEXT_TTL_SECONDS, context_value_json)
-            logger.info(f"Successfully stored context in Redis for conversation_id: {conversation_id}")
-            return jsonify({"message": "Agent utterance processed, context stored.", "expected_pii": expected_pii_type}), 200
-        except redis.exceptions.RedisError as e:
-            logger.error(f"Redis error during context storage for conversation_id: {conversation_id}. Error: {str(e)}")
-            return jsonify({"error": "Failed to store context in Redis"}), 500
-    elif not redis_client:
-        return jsonify({"error": "Redis client not available"}), 503
-    
-    logger.info(f"No expected PII type found for conversation_id: {conversation_id}")
-    return jsonify({"message": "Agent utterance processed, no specific PII context to store."}), 200
+    if expected_pii_type:
+        if redis_client:
+            try:
+                context_key = f"context:{conversation_id}"
+                context_value = {
+                    "expected_pii_type": expected_pii_type,
+                    "agent_transcript": transcript,
+                    "timestamp": time.time()
+                }
+                context_value_json = json.dumps(context_value)
+                logger.info(f"Attempting to store context in Redis. Key: {context_key}, Value: {context_value_json}, TTL: {CONTEXT_TTL_SECONDS}")
+                redis_client.setex(context_key, CONTEXT_TTL_SECONDS, context_value_json)
+                logger.info(f"Successfully stored context in Redis for conversation_id: {conversation_id}")
+            except redis.exceptions.RedisError as e:
+                logger.error(f"Redis error during context storage for conversation_id: {conversation_id}. Error: {str(e)}")
+                # Don't block the response if Redis fails, but log it.
+        else:
+            logger.warning(f"Redis client not available, cannot store context for conversation_id: {conversation_id}")
+    else:
+        logger.info(f"No expected PII type found for conversation_id: {conversation_id}")
+
+    return jsonify({"redacted_transcript": redacted_transcript}), 200
 
 @app.route('/handle-customer-utterance', methods=['POST'])
 def handle_customer_utterance():
