@@ -341,6 +341,7 @@ def initiate_redaction():
     return jsonify({"jobId": conversation_id}), 202 # 202 Accepted for asynchronous processing
 
 @app.route('/handle-agent-utterance', methods=['POST'])
+@firebase_auth_required
 def handle_agent_utterance():
     """
     Handles the agent's utterance, extracts potential PII requests,
