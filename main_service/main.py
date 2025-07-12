@@ -116,39 +116,6 @@ def firebase_auth_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# --- Service-to-Service Authentication Decorator ---
-def service_auth_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            logger.warning("Service Auth: Missing or invalid Authorization header.")
-            return jsonify({"error": "Authorization header missing or invalid"}), 401
-
-        token = auth_header.split('Bearer ')[1]
-        
-        try:
-            # Verify the token is a valid Google-signed ID token.
-            # This is the correct method for service-to-service authentication.
-            identity = id_token.verify_oauth2_token(token, requests.Request())
-            
-            # For enhanced security, you would typically also verify that the
-            # 'aud' (audience) claim in the token matches your service's URL
-            # and that the 'email' claim belongs to an authorized service account.
-            # For this fix, we will focus on the primary validation.
-            
-            logger.info(f"Service Auth: Token verified for service account: {identity.get('email')}")
-            request.service_account_email = identity.get('email')
-
-        except ValueError as e:
-            logger.error(f"Service Auth: Invalid token. Error: {e}")
-            return jsonify({"error": "Invalid authentication token"}), 403
-        except Exception as e:
-            logger.error(f"Service Auth: An unexpected error occurred during token verification: {e}")
-            return jsonify({"error": "Authentication failed"}), 500
-            
-        return f(*args, **kwargs)
-    return decorated_function
 
 # Configuration
 # Sensitive values are fetched from Google Cloud Secret Manager
@@ -375,7 +342,6 @@ def initiate_redaction():
     return jsonify({"jobId": conversation_id}), 202 # 202 Accepted for asynchronous processing
 
 @app.route('/handle-agent-utterance', methods=['POST'])
-@firebase_auth_required
 def handle_agent_utterance():
     """
     Handles the agent's utterance, extracts potential PII requests,
@@ -418,7 +384,6 @@ def handle_agent_utterance():
     return jsonify({"redacted_transcript": redacted_transcript, "context_stored": expected_pii_type is not None}), 200
 
 @app.route('/handle-customer-utterance', methods=['POST'])
-@service_auth_required
 def handle_customer_utterance():
     """
     Handles the customer's utterance, retrieves context from Redis,
