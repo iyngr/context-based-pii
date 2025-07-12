@@ -20,6 +20,7 @@ ENV REACT_APP_FIREBASE_MESSAGING_SENDER_ID=$REACT_APP_FIREBASE_MESSAGING_SENDER_
 ENV REACT_APP_FIREBASE_APP_ID=$REACT_APP_FIREBASE_APP_ID
 ENV REACT_APP_BACKEND_URL=$REACT_APP_BACKEND_URL
 
+RUN corepack enable && corepack prepare pnpm@latest --activate
 COPY pnpm-lock.yaml package.json ./
 RUN pnpm install --frozen-lockfile
 COPY . .
@@ -32,8 +33,9 @@ FROM node:18-alpine
 WORKDIR /app
 
 # Copy only necessary production dependencies and the server.js
+RUN corepack enable && corepack prepare pnpm@latest --activate
 COPY pnpm-lock.yaml package.json ./
-RUN corepack enable && corepack prepare pnpm@latest --activate && pnpm install --prod --frozen-lockfile
+RUN pnpm install --prod --frozen-lockfile
 
 # Copy the server.js and the build output from the 'build' stage
 COPY server.js .
