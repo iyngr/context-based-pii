@@ -69,16 +69,7 @@ steps:
       - '--service-account'
       - 'context-manager-sa@${PROJECT_ID}.iam.gserviceaccount.com'
       # Correctly set secrets as runtime environment variables in the container
-      - |
-        --set-secrets=BACKEND_SERVICE_URL=CONTEXT_MANAGER_URL:latest,
-        CONTEXT_MANAGER_URL=CONTEXT_MANAGER_URL:latest,
-        TRANSCRIPT_AGGREGATOR_URL=TRANSCRIPT_AGGREGATOR_URL:latest,
-        FIREBASE_API_KEY=FIREBASE_API_KEY:latest,
-        FIREBASE_AUTH_DOMAIN=FIREBASE_AUTH_DOMAIN:latest,
-        FIREBASE_PROJECT_ID=FIREBASE_PROJECT_ID:latest,
-        FIREBASE_STORAGE_BUCKET=FIREBASE_STORAGE_BUCKET:latest,
-        FIREBASE_MESSAGING_SENDER_ID=FIREBASE_MESSAGING_SENDER_ID:latest,
-        FIREBASE_APP_ID=FIREBASE_APP_ID:latest
+      - '--set-secrets=BACKEND_SERVICE_URL=CONTEXT_MANAGER_URL:latest,CONTEXT_MANAGER_URL=CONTEXT_MANAGER_URL:latest,TRANSCRIPT_AGGREGATOR_URL=TRANSCRIPT_AGGREGATOR_URL:latest,FIREBASE_API_KEY=FIREBASE_API_KEY:latest,FIREBASE_AUTH_DOMAIN=FIREBASE_AUTH_DOMAIN:latest,FIREBASE_PROJECT_ID=FIREBASE_PROJECT_ID:latest,FIREBASE_STORAGE_BUCKET=FIREBASE_STORAGE_BUCKET:latest,FIREBASE_MESSAGING_SENDER_ID=FIREBASE_MESSAGING_SENDER_ID:latest,FIREBASE_APP_ID=FIREBASE_APP_ID:latest'
     dir: 'frontend'
     # The 'secretEnv' block is removed from this deployment step as it's not needed here.
 
@@ -91,6 +82,10 @@ substitutions:
 
 options:
   logging: CLOUD_LOGGING_ONLY
+  defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET
+  machineType: 'E2_MEDIUM'
+  pool:
+    name: 'projects/${PROJECT_ID}/locations/${_REGION}/workerPools/default'
 
 availableSecrets:
   secretManager:

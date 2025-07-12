@@ -1,5 +1,5 @@
 # Build stage
-FROM node:18-alpine as build
+FROM node:24-alpine as build
 WORKDIR /app
 
 # Define ARGs for build-time variables that are passed in from the cloudbuild.yaml
@@ -26,18 +26,20 @@ COPY package*.json ./
 RUN npm ci
 COPY . .
 
+
 # The Create React App build script will automatically use the REACT_APP_* environment variables
 # declared as ARGs above.
-# Explicitly pass REACT_APP_BACKEND_URL and REACT_APP_TRANSCRIPT_AGGREGATOR_URL to npm run build
-RUN sh -c "REACT_APP_BACKEND_URL=$REACT_APP_BACKEND_URL REACT_APP_TRANSCRIPT_AGGREGATOR_URL=$REACT_APP_TRANSCRIPT_AGGREGATOR_URL npm run build"
+# Disable source map generation for production builds
+RUN sh -c "GENERATE_SOURCEMAP=false REACT_APP_BACKEND_URL=$REACT_APP_BACKEND_URL REACT_APP_TRANSCRIPT_AGGREGATOR_URL=$REACT_APP_TRANSCRIPT_AGGREGATOR_URL npm run build"
 
 # Production stage
-FROM node:18-alpine
+FROM node:24-alpine
 WORKDIR /app
+
 
 # Copy only necessary production dependencies and the server.js
 COPY package*.json ./
-RUN npm install --production
+RUN npm ci --omit=dev
 
 # Copy the server.js and the build output from the 'build' stage
 COPY server.js .
