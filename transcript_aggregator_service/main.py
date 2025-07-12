@@ -231,30 +231,8 @@ def receive_conversation_ended_event():
         try:
             logger.info("Starting GCS JSON preparation for final aggregation.", extra={"json_fields": {"event": "gcs_prep_start_final", "conversation_id": conversation_id}})
 
-            transcript_segments = []
-            for entry in entries_for_gcs:
-                start_timestamp_usec = entry.get('start_timestamp_usec', 0)
-                seconds = start_timestamp_usec // 1_000_000
-                nanos = (start_timestamp_usec % 1_000_000) * 1000
-
-                segment = {
-                    "message_time": {
-                        "seconds": seconds,
-                        "nanos": nanos
-                    },
-                    "text": entry.get("text"),
-                    "segment_participant": {
-                        "role": entry.get("participant_role")
-                    }
-                }
-                transcript_segments.append(segment)
-
-            # The GCS payload must be a JSON representation of a Conversation object.
-            gcs_payload_dict = {
-                "transcript": {
-                    "transcript_segments": transcript_segments
-                }
-            }
+            # The GCS payload must be a JSON object with an "entries" key.
+            gcs_payload_dict = {"entries": entries_for_gcs}
             json_payload_for_gcs = json.dumps(gcs_payload_dict, indent=2, cls=DateTimeEncoder)
             
             gcs_transcript_filename = f"{conversation_id}_transcript.json"
