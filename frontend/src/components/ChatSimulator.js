@@ -173,7 +173,10 @@ const ChatSimulator = ({ setView, setJobId }) => {
                                     maxWidth: '70%',
                                 }}
                             >
-                                <ListItemText primary={msg.originalText} secondary={msg.speaker} />
+                                <ListItemText
+                                    primary={msg.redactedText ? msg.redactedText : msg.originalText}
+                                    secondary={msg.speaker}
+                                />
                             </Box>
                         </ListItem>
                     ))}

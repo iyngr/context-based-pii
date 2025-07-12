@@ -59,7 +59,7 @@ const ResultsView = ({ jobId, setView, idToken }) => {
                 // Silently fail fast polling - main polling will handle errors
                 console.log('Fast polling failed, falling back to main service:', err.message);
             }
-        }, 1000); // Poll every 1 second for fast updates
+        }, 3000); // Poll every 3 seconds for fast updates
 
         // Standard polling for final status from main service
         const poll = setInterval(async () => {
