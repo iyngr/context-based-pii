@@ -80,22 +80,20 @@ const ResultsView = ({ jobId, setView, idToken }) => {
         }, 50);
     };
 
-    const renderMessage = (originalMsg, redactedMsg, index, isOriginalPanel, maxLength) => {
-        const currentOriginalMsg = originalMsg?.transcript?.transcript_segments?.[index];
-        const currentRedactedMsg = redactedMsg?.transcript?.transcript_segments?.[index];
-
-        // Determine which message to use based on the panel
-        const msgToUse = isOriginalPanel ? currentOriginalMsg : currentRedactedMsg;
-        const otherMsg = isOriginalPanel ? currentRedactedMsg : currentOriginalMsg;
-
+    const renderMessage = (originalSegment, redactedSegment, index, isOriginalPanel) => {
         // If both messages are missing at this index, render an empty placeholder to maintain alignment
-        if (!currentOriginalMsg && !currentRedactedMsg) {
+        if (!originalSegment && !redactedSegment) {
             return <ListItem key={index} sx={{ minHeight: 50 }} />;
         }
 
-        // Determine speaker and text based on the message available for the current panel
-        const speakerToUse = msgToUse?.speaker || otherMsg?.speaker || 'UNKNOWN';
-        const textToDisplay = msgToUse?.text || '';
+        // Determine the canonical speaker for this index - use original first, then redacted
+        // This ensures both panels use the same speaker for alignment at the same index
+        const canonicalSpeaker = originalSegment?.speaker || redactedSegment?.speaker || 'UNKNOWN';
+
+        // Get the message for the current panel
+        const currentMessage = isOriginalPanel ? originalSegment : redactedSegment;
+        const textToDisplay = currentMessage?.text || '';
+        const hasMessage = !!currentMessage;
 
         return (
             <ListItem
@@ -105,40 +103,55 @@ const ResultsView = ({ jobId, setView, idToken }) => {
                 }}
                 key={index}
                 sx={{
-                    justifyContent: speakerToUse === 'END_USER' ? 'flex-start' : 'flex-end',
+                    // Use canonical speaker for consistent alignment across both panels
+                    justifyContent: canonicalSpeaker === 'END_USER' ? 'flex-start' : 'flex-end',
                     minHeight: 50, // Ensure a minimum height for all list items
+                    opacity: hasMessage ? 1 : 0.3, // Dim entire item if no message for this panel
                 }}
             >
                 <Box
                     sx={{
                         bgcolor: isOriginalPanel
-                            ? speakerToUse === 'END_USER'
-                                ? '#f0f0f0'
-                                : 'primary.main'
-                            : speakerToUse === 'END_USER'
-                                ? '#fff0f0' // Light red for redacted END_USER
-                                : '#e0f7fa', // Light blue for redacted AGENT
-                        color: !isOriginalPanel && speakerToUse === 'AGENT' ? 'white' : 'black',
+                            ? canonicalSpeaker === 'END_USER'
+                                ? '#f0f0f0'  // Gray for original END_USER
+                                : '#1976d2'  // Blue for original AGENT
+                            : canonicalSpeaker === 'END_USER'
+                                ? '#ffebee'  // Light red for redacted END_USER
+                                : '#e8f5e8', // Light green for redacted AGENT
+                        color: (isOriginalPanel && canonicalSpeaker === 'AGENT') ? 'white' : 'black',
                         p: 1,
                         borderRadius: 2,
                         maxWidth: '80%',
-                        opacity: msgToUse ? 1 : 0.5, // Dim if message is missing for this panel
+                        opacity: hasMessage ? 1 : 0.5, // Additional dimming for the message box
+                        border: hasMessage ? 'none' : '1px dashed #ccc', // Dashed border for missing messages
                     }}
                 >
                     <ListItemText
                         primary={
-                            <Typography
-                                dangerouslySetInnerHTML={{
-                                    __html: isOriginalPanel
-                                        ? textToDisplay
-                                        : textToDisplay.replace(
-                                            /\[(.*?)\]/g,
-                                            '<span style="background-color: #ffeb3b; padding: 2px; border-radius: 3px;">[$1]</span>'
-                                        ),
-                                }}
-                            />
+                            hasMessage ? (
+                                <Typography
+                                    dangerouslySetInnerHTML={{
+                                        __html: isOriginalPanel
+                                            ? textToDisplay
+                                            : textToDisplay.replace(
+                                                /\[(.*?)\]/g,
+                                                '<span style="background-color: #ffeb3b; padding: 2px; border-radius: 3px;">[$1]</span>'
+                                            ),
+                                    }}
+                                />
+                            ) : (
+                                <Typography
+                                    sx={{
+                                        fontStyle: 'italic',
+                                        color: 'text.secondary',
+                                        fontSize: '0.9em'
+                                    }}
+                                >
+                                    [No message in {isOriginalPanel ? 'original' : 'redacted'} transcript]
+                                </Typography>
+                            )
                         }
-                        secondary={speakerToUse}
+                        secondary={canonicalSpeaker}
                     />
                 </Box>
             </ListItem>
@@ -207,15 +220,16 @@ const ResultsView = ({ jobId, setView, idToken }) => {
                             onScroll={(e) => handleScroll(e.target)}
                         >
                             <List>
-                                {Array.from({ length: Math.max(originalConversation.transcript.transcript_segments.length, redactedConversation.transcript.transcript_segments.length) }).map((_, index) => (
-                                    renderMessage(
-                                        originalConversation,
-                                        redactedConversation,
+                                {Array.from({ length: Math.max(originalConversation.transcript.transcript_segments.length, redactedConversation.transcript.transcript_segments.length) }).map((_, index) => {
+                                    const originalSegment = originalConversation.transcript.transcript_segments[index];
+                                    const redactedSegment = redactedConversation.transcript.transcript_segments[index];
+                                    return renderMessage(
+                                        originalSegment,
+                                        redactedSegment,
                                         index,
-                                        true, // This is the original panel
-                                        Math.max(originalConversation.transcript.transcript_segments.length, redactedConversation.transcript.transcript_segments.length)
-                                    )
-                                ))}
+                                        true // This is the original panel
+                                    );
+                                })}
                             </List>
                         </Paper>
                     </Box>
@@ -228,15 +242,16 @@ const ResultsView = ({ jobId, setView, idToken }) => {
                             onScroll={(e) => handleScroll(e.target)}
                         >
                             <List>
-                                {Array.from({ length: Math.max(originalConversation.transcript.transcript_segments.length, redactedConversation.transcript.transcript_segments.length) }).map((_, index) => (
-                                    renderMessage(
-                                        originalConversation,
-                                        redactedConversation,
+                                {Array.from({ length: Math.max(originalConversation.transcript.transcript_segments.length, redactedConversation.transcript.transcript_segments.length) }).map((_, index) => {
+                                    const originalSegment = originalConversation.transcript.transcript_segments[index];
+                                    const redactedSegment = redactedConversation.transcript.transcript_segments[index];
+                                    return renderMessage(
+                                        originalSegment,
+                                        redactedSegment,
                                         index,
-                                        false, // This is the redacted panel
-                                        Math.max(originalConversation.transcript.transcript_segments.length, redactedConversation.transcript.transcript_segments.length)
-                                    )
-                                ))}
+                                        false // This is the redacted panel
+                                    );
+                                })}
                             </List>
                         </Paper>
                     </Box>
