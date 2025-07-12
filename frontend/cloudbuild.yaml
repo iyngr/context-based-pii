@@ -61,7 +61,7 @@ steps:
     name: 'gcr.io/cloud-builders/docker'
     args: ['push', '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/${_SERVICE_NAME}:latest']
 
-  # Deploy the frontend service to Cloud Run
+  # Deploy the frontend service to Cloud Run 
   - id: 'Deploy frontend to Cloud Run'
     name: 'gcr.io/cloud-builders/gcloud'
     args:
