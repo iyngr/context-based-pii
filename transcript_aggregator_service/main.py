@@ -10,44 +10,10 @@ from google.protobuf.timestamp_pb2 import Timestamp as ProtoTimestamp # Alias th
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from google.api_core.exceptions import InternalServerError, ServiceUnavailable, DeadlineExceeded, AlreadyExists, GoogleAPICallError
 import requests # New import for making HTTP requests
-import redis
-from google.cloud.secretmanager import SecretManagerServiceClient
-from google.api_core.exceptions import NotFound, PermissionDenied
-
-# --- Google Cloud Secret Manager Helper ---
-GCP_PROJECT_ID_FOR_SECRETS = os.getenv("GOOGLE_CLOUD_PROJECT")
-
-def get_secret(secret_id, version_id="latest", project_id=None):
-    """
-    Fetches a secret from Google Cloud Secret Manager.
-    """
-    if not project_id:
-        project_id = GCP_PROJECT_ID_FOR_SECRETS
-
-    if not project_id:
-        logger.error("GCP_PROJECT_ID_FOR_SECRETS is not set. Cannot fetch secrets.")
-        return None
-    if not secret_id:
-        logger.error("secret_id not provided to get_secret function.")
-        return None
-
-    try:
-        client = SecretManagerServiceClient()
-        name = f"projects/{project_id}/secrets/{secret_id}/versions/{version_id}"
-        response = client.access_secret_version(name=name)
-        payload = response.payload.data.decode("UTF-8")
-        cleaned_payload = payload.strip()
-        logger.info(f"Successfully fetched secret: {secret_id} (version: {version_id}).")
-        return cleaned_payload
-    except NotFound:
-        logger.error(f"Secret {secret_id} (version: {version_id}) not found in project {project_id}.")
-        return None
-    except PermissionDenied:
-        logger.error(f"Permission denied when trying to access secret {secret_id} (version: {version_id}) in project {project_id}.")
-        return None
-    except Exception as e:
-        logger.error(f"An unexpected error occurred while fetching secret {secret_id} (version: {version_id}): {str(e)}")
-        return None
+# Removed redis and secretmanager imports as per user's request to revert to environment variables
+# import redis
+# from google.cloud.secretmanager import SecretManagerServiceClient
+# from google.api_core.exceptions import NotFound, PermissionDenied
 
 # Configure structured logging
 class JsonFormatter(logging.Formatter):
@@ -85,42 +51,36 @@ db = firestore.Client(database="redacted-transcript-db")
 storage_client = storage.Client()
 AGGREGATED_TRANSCRIPTS_BUCKET = os.getenv('AGGREGATED_TRANSCRIPTS_BUCKET')
 
-# Initialize Redis Client
-REDIS_HOST_SECRET_ID = "CONTEXT_MANAGER_REDIS_HOST"
-REDIS_PORT_SECRET_ID = "CONTEXT_MANAGER_REDIS_PORT"
-
-REDIS_HOST = get_secret(REDIS_HOST_SECRET_ID)
-REDIS_PORT_STR = get_secret(REDIS_PORT_SECRET_ID)
-REDIS_PORT = int(REDIS_PORT_STR) if REDIS_PORT_STR else 6379
+# Reverted to reading directly from environment variables
+REDIS_HOST = os.getenv('REDIS_HOST')
+REDIS_PORT = int(os.getenv('REDIS_PORT', 6379)) # Default to 6379
 
 redis_client = None
-if REDIS_HOST and REDIS_PORT:
+if REDIS_HOST:
     try:
         redis_client = redis.StrictRedis(
             host=REDIS_HOST,
             port=REDIS_PORT,
             db=0,
             decode_responses=True,
-            ssl=False,
             socket_connect_timeout=10
         )
         redis_client.ping()
-        logger.info("Successfully connected to Redis.")
-    except redis.exceptions.RedisError as e:
-        logger.error(f"Redis error during client initialization: {e}")
-        redis_client = None # Ensure client is None on failure
+        logger.info("Successfully connected to Redis for utterance buffering.")
+    except Exception as e:
+        logger.error(f"Could not connect to Redis for utterance buffering: {e}", exc_info=True)
 else:
-    logger.error("Redis host or port not configured. Redis client not created.")
+    logger.warning("REDIS_HOST environment variable not set. Multi-turn context buffering will be inactive.")
 
 # Configure TTL for conversation context
 CONTEXT_TTL_SECONDS = int(os.getenv('CONTEXT_TTL_SECONDS', 3600)) # Default to 1 hour
 
 # Main Service URL for sending aggregated transcripts
-MAIN_SERVICE_URL_SECRET_ID = "CONTEXT_MANAGER_URL"
-MAIN_SERVICE_URL = get_secret(MAIN_SERVICE_URL_SECRET_ID)
+MAIN_SERVICE_URL = os.getenv('MAIN_SERVICE_URL')
 if not MAIN_SERVICE_URL:
-    logger.critical(f"Critical: MAIN_SERVICE_URL secret ('{MAIN_SERVICE_URL_SECRET_ID}') could not be fetched. Cannot forward aggregated transcripts. Exiting.")
-    exit(1) # Exit if this critical dependency is not met
+    logger.critical("MAIN_SERVICE_URL environment variable not set. Cannot forward aggregated transcripts.")
+    # Depending on deployment strategy, you might want to exit here.
+    # For now, we'll just log a critical error.
 
 app = Flask(__name__)
 
@@ -244,7 +204,7 @@ def receive_conversation_ended_event():
 
         if not entries_for_gcs:
             logger.warning(f"No utterances found in Firestore for conversation ID: {conversation_id} during final aggregation. Skipping GCS upload.", extra={"json_fields": {"event": "gcs_upload_skipped", "conversation_id": conversation_id, "reason": "no_utterances_in_firestore"}})
-            return jsonify({'status': 'skipped', 'message': 'No utterances found in Firestore, skipping GCS upload'}), 200
+            return jsonify({'status': 'skipped', 'message': 'No utterances found in Firestore, skipping GCS upload'}), 500 # Changed to 500 as it's a critical failure for the batch process
 
         # Upload Aggregated Transcript to GCS
         @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10),
