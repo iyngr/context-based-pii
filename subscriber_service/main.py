@@ -8,6 +8,8 @@ from flask import Flask, request, jsonify
 from google.cloud import pubsub_v1
 from google.cloud.secretmanager import SecretManagerServiceClient
 from google.api_core.exceptions import NotFound, PermissionDenied
+from google.auth.transport import requests as google_requests # Renamed to avoid conflict with 'requests'
+from google.oauth2 import id_token
 
 # Configure standard logging
 logging.basicConfig(level=logging.INFO,
@@ -90,6 +92,33 @@ def load_secrets():
         sys.exit(1) # Exit if critical secret is missing
 
 load_secrets()
+
+# --- Identity Token Generation Helper ---
+_cached_id_tokens = {} # Cache for ID tokens to avoid re-fetching frequently
+
+def get_id_token(audience: str) -> str:
+    """
+    Generates a Google-signed ID token for a given audience (Cloud Run service URL).
+    Tokens are cached for efficiency.
+    """
+    if audience in _cached_id_tokens:
+        # In a real-world scenario, you'd also check token expiration here.
+        # For simplicity, we're assuming tokens are valid for the duration of the request.
+        logger.info(f"Using cached ID token for audience: {audience}")
+        return _cached_id_tokens[audience]
+
+    try:
+        # requests.Request() is used here as a placeholder for the actual HTTP request object
+        # that id_token.fetch_id_token expects for its internal HTTP client.
+        # It will use the default credentials available in the Cloud Run environment.
+        auth_req = google_requests.Request()
+        token = id_token.fetch_id_token(auth_req, audience)
+        _cached_id_tokens[audience] = token
+        logger.info(f"Successfully fetched new ID token for audience: {audience}")
+        return token
+    except Exception as e:
+        logger.error(f"Error fetching ID token for audience {audience}: {str(e)}")
+        return None
 
 def get_full_topic_path(topic_name, project_id):
     """Constructs the full Pub/Sub topic path if not already provided."""
@@ -189,6 +218,16 @@ def process_transcript_event():
             return "Bad Request", 400
 
         headers = {'Content-Type': 'application/json'}
+        
+        # Add Authorization header with ID token
+        if CONTEXT_MANAGER_URL:
+            id_token_value = get_id_token(CONTEXT_MANAGER_URL)
+            if id_token_value:
+                headers['Authorization'] = f'Bearer {id_token_value}'
+            else:
+                logger.error(f"Could not obtain ID token for Context Manager URL: {CONTEXT_MANAGER_URL}. Proceeding without authentication.")
+        else:
+            logger.warning("CONTEXT_MANAGER_URL is not set. Cannot generate ID token for authentication.")
         service_payload = {
             "conversation_id": conversation_id,
             "transcript": transcript

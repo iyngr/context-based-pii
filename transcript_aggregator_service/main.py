@@ -55,6 +55,13 @@ AGGREGATED_TRANSCRIPTS_BUCKET = os.getenv('AGGREGATED_TRANSCRIPTS_BUCKET')
 REDIS_HOST = os.getenv('REDIS_HOST')
 REDIS_PORT = int(os.getenv('REDIS_PORT', 6379)) # Default to 6379
 
+# --- Custom JSON Encoder ---
+class DateTimeEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super(DateTimeEncoder, self).default(obj)
+ 
 redis_client = None
 if REDIS_HOST:
     try:
@@ -71,19 +78,19 @@ if REDIS_HOST:
         logger.error(f"Could not connect to Redis for utterance buffering: {e}", exc_info=True)
 else:
     logger.warning("REDIS_HOST environment variable not set. Multi-turn context buffering will be inactive.")
-
+ 
 # Configure TTL for conversation context
 CONTEXT_TTL_SECONDS = int(os.getenv('CONTEXT_TTL_SECONDS', 3600)) # Default to 1 hour
-
+ 
 # Main Service URL for sending aggregated transcripts
 MAIN_SERVICE_URL = os.getenv('MAIN_SERVICE_URL')
 if not MAIN_SERVICE_URL:
     logger.critical("MAIN_SERVICE_URL environment variable not set. Cannot forward aggregated transcripts.")
     # Depending on deployment strategy, you might want to exit here.
     # For now, we'll just log a critical error.
-
+ 
 app = Flask(__name__)
-
+ 
 @app.route('/redacted-transcripts', methods=['POST'])
 def receive_redacted_transcripts():
     """
@@ -222,7 +229,7 @@ def receive_conversation_ended_event():
             logger.info("Starting GCS JSON preparation for final aggregation.", extra={"json_fields": {"event": "gcs_prep_start_final", "conversation_id": conversation_id}})
 
             gcs_payload_dict = {"entries": entries_for_gcs}
-            json_payload_for_gcs = json.dumps(gcs_payload_dict, indent=2)
+            json_payload_for_gcs = json.dumps(gcs_payload_dict, indent=2, cls=DateTimeEncoder)
             
             gcs_transcript_filename = f"{conversation_id}_transcript.json"
             
