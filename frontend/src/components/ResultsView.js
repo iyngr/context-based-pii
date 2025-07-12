@@ -80,8 +80,22 @@ const ResultsView = ({ jobId, setView, idToken }) => {
         }, 50);
     };
 
-    const renderMessage = (msg, speaker, text, redacted = false, index, isOriginalPanel) => {
-        if (!msg) return <ListItem key={index} sx={{ minHeight: 50 }} />; // Placeholder for alignment
+    const renderMessage = (originalMsg, redactedMsg, index, isOriginalPanel, maxLength) => {
+        const currentOriginalMsg = originalMsg?.transcript?.transcript_segments?.[index];
+        const currentRedactedMsg = redactedMsg?.transcript?.transcript_segments?.[index];
+
+        // Determine which message to use based on the panel
+        const msgToUse = isOriginalPanel ? currentOriginalMsg : currentRedactedMsg;
+        const otherMsg = isOriginalPanel ? currentRedactedMsg : currentOriginalMsg;
+
+        // If both messages are missing at this index, render an empty placeholder to maintain alignment
+        if (!currentOriginalMsg && !currentRedactedMsg) {
+            return <ListItem key={index} sx={{ minHeight: 50 }} />;
+        }
+
+        // Determine speaker and text based on the message available for the current panel
+        const speakerToUse = msgToUse?.speaker || otherMsg?.speaker || 'UNKNOWN';
+        const textToDisplay = msgToUse?.text || '';
 
         return (
             <ListItem
@@ -91,40 +105,40 @@ const ResultsView = ({ jobId, setView, idToken }) => {
                 }}
                 key={index}
                 sx={{
-                    justifyContent:
-                        speaker === 'END_USER' ? 'flex-start' : 'flex-end',
+                    justifyContent: speakerToUse === 'END_USER' ? 'flex-start' : 'flex-end',
+                    minHeight: 50, // Ensure a minimum height for all list items
                 }}
             >
                 <Box
                     sx={{
-                        bgcolor: redacted
-                            ? speaker === 'END_USER'
-                                ? '#fff0f0'
-                                : '#e0f7fa'
-                            : speaker === 'END_USER'
+                        bgcolor: isOriginalPanel
+                            ? speakerToUse === 'END_USER'
                                 ? '#f0f0f0'
-                                : 'primary.main',
-                        color:
-                            !redacted && speaker === 'AGENT' ? 'white' : 'black',
+                                : 'primary.main'
+                            : speakerToUse === 'END_USER'
+                                ? '#fff0f0' // Light red for redacted END_USER
+                                : '#e0f7fa', // Light blue for redacted AGENT
+                        color: !isOriginalPanel && speakerToUse === 'AGENT' ? 'white' : 'black',
                         p: 1,
                         borderRadius: 2,
                         maxWidth: '80%',
+                        opacity: msgToUse ? 1 : 0.5, // Dim if message is missing for this panel
                     }}
                 >
                     <ListItemText
                         primary={
                             <Typography
                                 dangerouslySetInnerHTML={{
-                                    __html: redacted
-                                        ? text.replace(
+                                    __html: isOriginalPanel
+                                        ? textToDisplay
+                                        : textToDisplay.replace(
                                             /\[(.*?)\]/g,
                                             '<span style="background-color: #ffeb3b; padding: 2px; border-radius: 3px;">[$1]</span>'
-                                        )
-                                        : text,
+                                        ),
                                 }}
                             />
                         }
-                        secondary={speaker}
+                        secondary={speakerToUse}
                     />
                 </Box>
             </ListItem>
@@ -193,8 +207,14 @@ const ResultsView = ({ jobId, setView, idToken }) => {
                             onScroll={(e) => handleScroll(e.target)}
                         >
                             <List>
-                                {originalConversation.transcript.transcript_segments.map((msg, index) => (
-                                    renderMessage(msg, msg.speaker, msg.text, false, index, true)
+                                {Array.from({ length: Math.max(originalConversation.transcript.transcript_segments.length, redactedConversation.transcript.transcript_segments.length) }).map((_, index) => (
+                                    renderMessage(
+                                        originalConversation,
+                                        redactedConversation,
+                                        index,
+                                        true, // This is the original panel
+                                        Math.max(originalConversation.transcript.transcript_segments.length, redactedConversation.transcript.transcript_segments.length)
+                                    )
                                 ))}
                             </List>
                         </Paper>
@@ -208,8 +228,14 @@ const ResultsView = ({ jobId, setView, idToken }) => {
                             onScroll={(e) => handleScroll(e.target)}
                         >
                             <List>
-                                {redactedConversation.transcript.transcript_segments.map((msg, index) => (
-                                    renderMessage(msg, msg.speaker, msg.text, true, index, false)
+                                {Array.from({ length: Math.max(originalConversation.transcript.transcript_segments.length, redactedConversation.transcript.transcript_segments.length) }).map((_, index) => (
+                                    renderMessage(
+                                        originalConversation,
+                                        redactedConversation,
+                                        index,
+                                        false, // This is the redacted panel
+                                        Math.max(originalConversation.transcript.transcript_segments.length, redactedConversation.transcript.transcript_segments.length)
+                                    )
                                 ))}
                             </List>
                         </Paper>
