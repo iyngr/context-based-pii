@@ -262,3 +262,17 @@ This method uses the frontend application to interact with the system.
 5.  **As you send messages, the application will publish them to the `raw-transcripts` topic.**
 6.  **The redacted messages will be displayed in the chat window in near real-time.**
 7.  **Click the "Analyze Conversation" button** to finalize the conversation and view the full redacted transcript.
+
+## 8. Performance Optimization
+
+### Real-time Transcript Display
+
+The system now supports faster UI response times through a dual-polling approach:
+
+1. **Fast polling**: The frontend polls the `transcript_aggregator_service` directly for real-time partial results as utterances are processed and stored in Firestore.
+2. **Standard polling**: Continues to poll the `main_service` for final status and complete processing confirmation.
+
+This allows users to see redacted transcripts appear in near real-time without waiting for the full CCAI Insights upload process to complete.
+
+**Frontend Environment Variable:**
+- `REACT_APP_TRANSCRIPT_AGGREGATOR_URL`: URL of the transcript aggregator service (optional - defaults to replacing 'main-service' with 'transcript-aggregator' in the backend URL)

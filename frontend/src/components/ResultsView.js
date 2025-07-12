@@ -27,6 +27,41 @@ const ResultsView = ({ jobId, setView, idToken }) => {
     useEffect(() => {
         if (!jobId) return;
 
+        // Fast polling for real-time results from transcript aggregator
+        const fastPoll = setInterval(async () => {
+            try {
+                const aggregatorUrl = process.env.REACT_APP_TRANSCRIPT_AGGREGATOR_URL ||
+                    process.env.REACT_APP_BACKEND_URL.replace('/main-service', '/transcript-aggregator');
+
+                const response = await fetch(`${aggregatorUrl}/conversation/${jobId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${idToken}`,
+                    },
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+
+                    // Update conversations if we have data
+                    if (data.original_conversation && data.original_conversation.transcript.transcript_segments.length > 0) {
+                        setOriginalConversation(data.original_conversation);
+                    }
+                    if (data.redacted_conversation && data.redacted_conversation.transcript.transcript_segments.length > 0) {
+                        setRedactedConversation(data.redacted_conversation);
+                    }
+
+                    // If we have partial data, update status to show progress
+                    if (data.status === 'PARTIAL' && status === 'PROCESSING') {
+                        setStatus('PARTIAL');
+                    }
+                }
+            } catch (err) {
+                // Silently fail fast polling - main polling will handle errors
+                console.log('Fast polling failed, falling back to main service:', err.message);
+            }
+        }, 1000); // Poll every 1 second for fast updates
+
+        // Standard polling for final status from main service
         const poll = setInterval(async () => {
             try {
                 const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/redaction-status/${jobId}`, {
@@ -49,20 +84,26 @@ const ResultsView = ({ jobId, setView, idToken }) => {
                 if (data.status === 'DONE') {
                     setStatus('DONE');
                     clearInterval(poll);
+                    clearInterval(fastPoll); // Stop fast polling when done
                 } else if (data.status === 'FAILED') {
                     setStatus('FAILED');
                     setError('Processing failed. Please try again.');
                     clearInterval(poll);
+                    clearInterval(fastPoll); // Stop fast polling on failure
                 }
             } catch (err) {
                 setStatus('FAILED');
                 setError('An error occurred while fetching the results.');
                 clearInterval(poll);
+                clearInterval(fastPoll); // Stop fast polling on error
             }
-        }, 3000);
+        }, 3000); // Poll every 3 seconds for final status
 
-        return () => clearInterval(poll);
-    }, [jobId]);
+        return () => {
+            clearInterval(poll);
+            clearInterval(fastPoll);
+        };
+    }, [jobId, idToken, status]);
 
     const handleScroll = (scrolledPanel) => {
         if (isScrolling.current) return;
@@ -204,12 +245,20 @@ const ResultsView = ({ jobId, setView, idToken }) => {
                     </Typography>
                 </Box>
             )}
+            {status === 'PARTIAL' && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+                    <CircularProgress />
+                    <Typography sx={{ ml: 2 }}>
+                        Processing in real-time... (Showing partial results below)
+                    </Typography>
+                </Box>
+            )}
             {status === 'FAILED' && (
                 <Alert severity="error" sx={{ mt: 2 }}>
                     {error}
                 </Alert>
             )}
-            {status === 'DONE' && originalConversation && redactedConversation && (
+            {(status === 'DONE' || status === 'PARTIAL') && originalConversation && redactedConversation && (
                 <Box sx={{ display: 'flex', flexDirection: 'row', gap: 2 }}>
                     <Box sx={{ flex: 1 }}>
                         <Typography variant="h6">Original Transcript</Typography>

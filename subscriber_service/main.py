@@ -214,6 +214,7 @@ def process_transcript_event():
                         "conversation_id": conversation_id,
                         "original_entry_index": original_entry_index,
                         "text": redacted_transcript,
+                        "original_text": transcript,  # Include original text for comparison
                         "participant_role": participant_role,
                         "user_id": user_id,
                         "start_timestamp_usec": start_timestamp_usec
@@ -244,6 +245,7 @@ def process_transcript_event():
                             "conversation_id": conversation_id,
                             "original_entry_index": original_entry_index,
                             "text": redacted_transcript,
+                            "original_text": transcript,  # Include original text for comparison
                             "participant_role": participant_role,
                             "user_id": user_id,
                             "start_timestamp_usec": start_timestamp_usec

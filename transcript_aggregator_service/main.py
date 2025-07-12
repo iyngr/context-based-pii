@@ -123,6 +123,7 @@ def receive_redacted_transcripts():
     # Extract required fields
     conversation_id = message_data.get('conversation_id')
     redacted_transcript = message_data.get('text')
+    original_text = message_data.get('original_text')  # Also store original text if available
     original_entry_index = message_data.get('original_entry_index')
     participant_role = message_data.get('participant_role')
     user_id = message_data.get('user_id')
@@ -145,14 +146,20 @@ def receive_redacted_transcripts():
     try:
         # Store the utterance in Firestore
         doc_ref = db.collection('conversations').document(conversation_id).collection('utterances').document(str(original_entry_index))
-        doc_ref.set({
+        utterance_data = {
             'text': redacted_transcript,
             'original_entry_index': original_entry_index,
             'participant_role': participant_role,
             'user_id': user_id,
             'start_timestamp_usec': start_timestamp_usec,
             'received_at': firestore.SERVER_TIMESTAMP
-        })
+        }
+        
+        # Store original text if available
+        if original_text:
+            utterance_data['original_text'] = original_text
+        
+        doc_ref.set(utterance_data)
         logger.info(f"Firestore: Stored utterance {original_entry_index} for conversation {conversation_id}.", extra={"json_fields": {"event": "firestore_utterance_store", "conversation_id": conversation_id, "original_entry_index": original_entry_index}})
         return jsonify({'status': 'success', 'message': 'Utterance stored in Firestore'}), 200
 
@@ -249,3 +256,102 @@ def receive_conversation_ended_event():
     except Exception as e:
         logger.error(f"Unhandled exception in /conversation-ended. Exception: {e}, Type: {type(e)}, Repr: {repr(e)}", exc_info=True, extra={"json_fields": {"event": "unhandled_exception", "error_message": str(e), "error_type": str(type(e)), "error_repr": repr(e)}})
         return jsonify({'error': f'An unexpected error occurred: {e}'}), 500
+
+@app.route('/conversation/<conversation_id>', methods=['GET'])
+def get_conversation_realtime(conversation_id):
+    """
+    Retrieves conversation data directly from Firestore for real-time display.
+    Returns both original and redacted transcripts in the same format as main_service.
+    """
+    try:
+        # Retrieve all utterances from Firestore for this conversation
+        utterances_ref = db.collection('conversations').document(conversation_id).collection('utterances')
+        utterances = utterances_ref.order_by('original_entry_index').stream()
+        
+        utterances_data = []
+        for utterance in utterances:
+            data = utterance.to_dict()
+            utterances_data.append(data)
+        
+        if not utterances_data:
+            logger.info(f"No utterances found in Firestore for conversation {conversation_id}.", 
+                       extra={"json_fields": {"event": "no_utterances_found", "conversation_id": conversation_id}})
+            return jsonify({
+                "status": "PROCESSING",
+                "message": "No utterances found yet",
+                "original_conversation": {"transcript": {"transcript_segments": []}},
+                "redacted_conversation": {"transcript": {"transcript_segments": []}}
+            }), 200
+        
+        # Try to get original transcripts from Redis if available
+        original_transcript_segments = []
+        redacted_transcript_segments = []
+        
+        # First try to build original transcript from Firestore data
+        has_original_in_firestore = any(utterance_data.get('original_text') for utterance_data in utterances_data)
+        
+        if has_original_in_firestore:
+            # Use original text from Firestore
+            for utterance_data in utterances_data:
+                speaker = "END_USER" if utterance_data.get('participant_role') == "END_USER" else "AGENT"
+                original_transcript_segments.append({
+                    "speaker": speaker,
+                    "text": utterance_data.get('original_text', utterance_data.get('text', ''))
+                })
+            logger.info(f"Retrieved original transcript from Firestore for conversation {conversation_id}.")
+        else:
+            # Fallback to Redis for original transcripts
+            if redis_client:
+                try:
+                    original_conversation_str = redis_client.get(f"original_conversation:{conversation_id}")
+                    if original_conversation_str:
+                        original_transcript_segments = json.loads(original_conversation_str)
+                        logger.info(f"Retrieved original transcript from Redis for conversation {conversation_id}.")
+                except Exception as e:
+                    logger.warning(f"Could not retrieve original transcript from Redis for conversation {conversation_id}: {e}")
+        
+        # Build redacted transcript segments from Firestore data
+        for utterance_data in utterances_data:
+            speaker = "END_USER" if utterance_data.get('participant_role') == "END_USER" else "AGENT"
+            redacted_transcript_segments.append({
+                "speaker": speaker,
+                "text": utterance_data.get('text', '')
+            })
+        
+        # If we don't have original transcripts from either source, create placeholder structure
+        if not original_transcript_segments:
+            logger.warning(f"No original transcript found for conversation {conversation_id}. Using redacted as placeholder.")
+            # Create a basic structure - in production you might want to store originals in Firestore too
+            for utterance_data in utterances_data:
+                speaker = "END_USER" if utterance_data.get('participant_role') == "END_USER" else "AGENT"
+                original_transcript_segments.append({
+                    "speaker": speaker,
+                    "text": "[Original text not available]"
+                })
+        
+        response_data = {
+            "status": "PROCESSING" if len(utterances_data) == 0 else "PARTIAL",
+            "conversation_id": conversation_id,
+            "utterance_count": len(utterances_data),
+            "original_conversation": {
+                "transcript": {
+                    "transcript_segments": original_transcript_segments
+                }
+            },
+            "redacted_conversation": {
+                "transcript": {
+                    "transcript_segments": redacted_transcript_segments
+                }
+            }
+        }
+        
+        logger.info(f"Retrieved {len(utterances_data)} utterances from Firestore for conversation {conversation_id}.", 
+                   extra={"json_fields": {"event": "firestore_conversation_retrieved", "conversation_id": conversation_id, "utterance_count": len(utterances_data)}})
+        
+        return jsonify(response_data), 200
+        
+    except Exception as e:
+        logger.error(f"Error retrieving conversation {conversation_id} from Firestore: {e}", 
+                    exc_info=True, 
+                    extra={"json_fields": {"event": "firestore_conversation_error", "conversation_id": conversation_id, "error_details": str(e)}})
+        return jsonify({'error': f'Failed to retrieve conversation: {e}'}), 500
