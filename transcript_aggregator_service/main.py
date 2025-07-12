@@ -203,6 +203,9 @@ def receive_conversation_ended_event():
 
         logger.info(f"Received conversation ended event for Conversation ID: {conversation_id}.", extra={"json_fields": {"event": "conversation_ended_event", "conversation_id": conversation_id}})
 
+        # Introduce a delay to mitigate race condition between transcript persistence and conversation ended event.
+        time.sleep(10)
+
         # Retrieve all utterances from Firestore for final aggregation
         utterances_ref = db.collection('conversations').document(conversation_id).collection('utterances')
         utterances = utterances_ref.order_by('original_entry_index').stream()
