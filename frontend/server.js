@@ -36,7 +36,7 @@ app.use('/api', createProxyMiddleware({
 }));
 
 // All other requests are served by the React app
-app.get('*', (req, res) => {
+app.get('/*', (req, res) => {
     res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
 
