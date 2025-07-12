@@ -80,7 +80,7 @@ const ResultsView = ({ jobId, setView, idToken }) => {
         }, 50);
     };
 
-    const renderMessage = (msg, redacted = false, index, isOriginalPanel) => {
+    const renderMessage = (msg, speaker, text, redacted = false, index, isOriginalPanel) => {
         if (!msg) return <ListItem key={index} sx={{ minHeight: 50 }} />; // Placeholder for alignment
 
         return (
@@ -92,20 +92,20 @@ const ResultsView = ({ jobId, setView, idToken }) => {
                 key={index}
                 sx={{
                     justifyContent:
-                        msg.speaker === 'END_USER' ? 'flex-start' : 'flex-end',
+                        speaker === 'END_USER' ? 'flex-start' : 'flex-end',
                 }}
             >
                 <Box
                     sx={{
                         bgcolor: redacted
-                            ? msg.speaker === 'END_USER'
+                            ? speaker === 'END_USER'
                                 ? '#fff0f0'
                                 : '#e0f7fa'
-                            : msg.speaker === 'END_USER'
+                            : speaker === 'END_USER'
                                 ? '#f0f0f0'
                                 : 'primary.main',
                         color:
-                            !redacted && msg.speaker === 'AGENT' ? 'white' : 'black',
+                            !redacted && speaker === 'AGENT' ? 'white' : 'black',
                         p: 1,
                         borderRadius: 2,
                         maxWidth: '80%',
@@ -116,15 +116,15 @@ const ResultsView = ({ jobId, setView, idToken }) => {
                             <Typography
                                 dangerouslySetInnerHTML={{
                                     __html: redacted
-                                        ? msg.text.replace(
+                                        ? text.replace(
                                             /\[(.*?)\]/g,
                                             '<span style="background-color: #ffeb3b; padding: 2px; border-radius: 3px;">[$1]</span>'
                                         )
-                                        : msg.text,
+                                        : text,
                                 }}
                             />
                         }
-                        secondary={msg.speaker}
+                        secondary={speaker}
                     />
                 </Box>
             </ListItem>
@@ -133,22 +133,31 @@ const ResultsView = ({ jobId, setView, idToken }) => {
 
     useEffect(() => {
         if (status === 'DONE' && originalConversation && redactedConversation) {
-            originalItemRefs.current = originalItemRefs.current.slice(0, originalConversation.transcript.transcript_segments.length);
-            redactedItemRefs.current = redactedItemRefs.current.slice(0, redactedConversation.transcript.transcript_segments.length);
+            // Ensure refs are cleared and re-populated correctly
+            originalItemRefs.current = [];
+            redactedItemRefs.current = [];
 
-            originalConversation.transcript.transcript_segments.forEach((_, index) => {
-                const originalEl = originalItemRefs.current[index];
-                const redactedEl = redactedItemRefs.current[index];
+            // Use a timeout to ensure elements are rendered before measuring
+            setTimeout(() => {
+                const maxLength = Math.max(
+                    originalConversation.transcript.transcript_segments.length,
+                    redactedConversation.transcript.transcript_segments.length
+                );
 
-                if (originalEl && redactedEl) {
-                    const originalHeight = originalEl.offsetHeight;
-                    const redactedHeight = redactedEl.offsetHeight;
-                    const maxHeight = Math.max(originalHeight, redactedHeight);
+                for (let i = 0; i < maxLength; i++) {
+                    const originalEl = originalItemRefs.current[i];
+                    const redactedEl = redactedItemRefs.current[i];
 
-                    originalEl.style.minHeight = `${maxHeight}px`;
-                    redactedEl.style.minHeight = `${maxHeight}px`;
+                    if (originalEl && redactedEl) {
+                        const originalHeight = originalEl.offsetHeight;
+                        const redactedHeight = redactedEl.offsetHeight;
+                        const maxHeight = Math.max(originalHeight, redactedHeight);
+
+                        originalEl.style.minHeight = `${maxHeight}px`;
+                        redactedEl.style.minHeight = `${maxHeight}px`;
+                    }
                 }
-            });
+            }, 100); // Small delay to allow DOM to update
         }
     }, [status, originalConversation, redactedConversation]);
 
@@ -185,7 +194,7 @@ const ResultsView = ({ jobId, setView, idToken }) => {
                         >
                             <List>
                                 {originalConversation.transcript.transcript_segments.map((msg, index) => (
-                                    renderMessage(msg, false, index, true)
+                                    renderMessage(msg, msg.speaker, msg.text, false, index, true)
                                 ))}
                             </List>
                         </Paper>
@@ -200,7 +209,7 @@ const ResultsView = ({ jobId, setView, idToken }) => {
                         >
                             <List>
                                 {redactedConversation.transcript.transcript_segments.map((msg, index) => (
-                                    renderMessage(msg, true, index, false)
+                                    renderMessage(msg, msg.speaker, msg.text, true, index, false)
                                 ))}
                             </List>
                         </Paper>
