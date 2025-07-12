@@ -381,7 +381,7 @@ def handle_agent_utterance():
     else:
         logger.info(f"No expected PII type found for conversation_id: {conversation_id}")
 
-    return jsonify({"redacted_transcript": redacted_transcript}), 200
+    return jsonify({"redacted_transcript": redacted_transcript, "context_stored": expected_pii_type is not None}), 200
 
 @app.route('/handle-customer-utterance', methods=['POST'])
 def handle_customer_utterance():

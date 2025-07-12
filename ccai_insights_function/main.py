@@ -40,7 +40,8 @@ def main(event, context):
         conversation = contact_center_insights_v1.types.Conversation(
             data_source=contact_center_insights_v1.types.ConversationDataSource(
                 gcs_source=contact_center_insights_v1.types.GcsSource(transcript_uri=gcs_uri)
-            )
+            ),
+            medium=contact_center_insights_v1.types.Conversation.Medium.CHAT,
         )
 
         redaction_config = contact_center_insights_v1.types.RedactionConfig(

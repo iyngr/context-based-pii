@@ -238,17 +238,18 @@ def process_transcript_event():
                 endpoint = f"{CONTEXT_MANAGER_URL}/handle-agent-utterance"
                 response = requests.post(endpoint, json=service_payload, headers=headers, timeout=10)
                 response.raise_for_status()
-                logger.info(f"Agent utterance (entry {original_entry_index}) processed. Response: {response.text}")
-
-                # After processing, publish the original agent utterance.
-                # Agent utterances are not redacted, so we use the original transcript.
+                response_data = response.json()
+                logger.info(f"Agent utterance (entry {original_entry_index}) processed. Response data: {response_data}")
+ 
+                redacted_transcript = response_data.get('redacted_transcript', transcript) # Fallback to original if not found
+ 
                 if publisher and REDACTED_TOPIC_NAME:
                     full_redacted_topic_path = get_full_topic_path(REDACTED_TOPIC_NAME, SUBSCRIBER_GCP_PROJECT_ID)
-
+ 
                     publish_payload = {
                         "conversation_id": conversation_id,
                         "original_entry_index": original_entry_index,
-                        "text": transcript, # Use original transcript for agent
+                        "text": redacted_transcript,
                         "participant_role": participant_role,
                         "user_id": user_id,
                         "start_timestamp_usec": start_timestamp_usec
