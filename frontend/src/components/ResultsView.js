@@ -80,77 +80,53 @@ const ResultsView = ({ jobId, setView, idToken }) => {
         }, 50);
     };
 
-    const renderTranscript = (segments, redacted = false) => (
-        <List>
-            {segments && segments.map((msg, index) => (
-                <ListItem
-                    ref={el => {
-                        if (redacted) redactedItemRefs.current[index] = el;
-                        else originalItemRefs.current[index] = el;
-                    }}
-                    key={index}
+    const renderMessage = (msg, redacted = false) => {
+        if (!msg) {
+            return <Box sx={{ minHeight: 50 }} />; // Placeholder for alignment
+        }
+
+        return (
+            <ListItem
+                sx={{
+                    justifyContent:
+                        msg.speaker === 'END_USER' ? 'flex-start' : 'flex-end',
+                }}
+            >
+                <Box
                     sx={{
-                        justifyContent:
-                            msg.speaker === 'END_USER' ? 'flex-start' : 'flex-end',
+                        bgcolor: redacted
+                            ? msg.speaker === 'END_USER'
+                                ? '#fff0f0'
+                                : '#e0f7fa'
+                            : msg.speaker === 'END_USER'
+                                ? '#f0f0f0'
+                                : 'primary.main',
+                        color:
+                            !redacted && msg.speaker === 'AGENT' ? 'white' : 'black',
+                        p: 1,
+                        borderRadius: 2,
+                        maxWidth: '80%',
                     }}
                 >
-                    <Box
-                        sx={{
-                            bgcolor: redacted
-                                ? msg.speaker === 'END_USER'
-                                    ? '#fff0f0'
-                                    : '#e0f7fa'
-                                : msg.speaker === 'END_USER'
-                                    ? '#f0f0f0'
-                                    : 'primary.main',
-                            color:
-                                !redacted && msg.speaker === 'AGENT' ? 'white' : 'black',
-                            p: 1,
-                            borderRadius: 2,
-                            maxWidth: '80%',
-                        }}
-                    >
-                        <ListItemText
-                            primary={
-                                <Typography
-                                    dangerouslySetInnerHTML={{
-                                        __html: redacted
-                                            ? msg.text.replace(
-                                                /\[(.*?)\]/g,
-                                                '<span style="background-color: #ffeb3b; padding: 2px; border-radius: 3px;">[$1]</span>'
-                                            )
-                                            : msg.text,
-                                    }}
-                                />
-                            }
-                            secondary={msg.speaker}
-                        />
-                    </Box>
-                </ListItem>
-            ))}
-        </List>
-    );
-
-    useEffect(() => {
-        if (status === 'DONE' && originalConversation && redactedConversation) {
-            originalItemRefs.current = originalItemRefs.current.slice(0, originalConversation.transcript.transcript_segments.length);
-            redactedItemRefs.current = redactedItemRefs.current.slice(0, redactedConversation.transcript.transcript_segments.length);
-
-            originalConversation.transcript.transcript_segments.forEach((_, index) => {
-                const originalEl = originalItemRefs.current[index];
-                const redactedEl = redactedItemRefs.current[index];
-
-                if (originalEl && redactedEl) {
-                    const originalHeight = originalEl.offsetHeight;
-                    const redactedHeight = redactedEl.offsetHeight;
-                    const maxHeight = Math.max(originalHeight, redactedHeight);
-
-                    originalEl.style.minHeight = `${maxHeight}px`;
-                    redactedEl.style.minHeight = `${maxHeight}px`;
-                }
-            });
-        }
-    }, [status, originalConversation, redactedConversation]);
+                    <ListItemText
+                        primary={
+                            <Typography
+                                dangerouslySetInnerHTML={{
+                                    __html: redacted
+                                        ? msg.text.replace(
+                                            /\[(.*?)\]/g,
+                                            '<span style="background-color: #ffeb3b; padding: 2px; border-radius: 3px;">[$1]</span>'
+                                        )
+                                        : msg.text,
+                                }}
+                            />
+                        }
+                        secondary={msg.speaker}
+                    />
+                </Box>
+            </ListItem>
+        );
+    };
 
     return (
         <Box sx={{ margin: 'auto', mt: 4 }}>
@@ -174,8 +150,8 @@ const ResultsView = ({ jobId, setView, idToken }) => {
                 </Alert>
             )}
             {status === 'DONE' && originalConversation && redactedConversation && (
-                <Box sx={{ display: 'flex', flexDirection: 'row', gap: 2 }}>
-                    <Box sx={{ flex: 1 }}>
+                <Grid container spacing={2}>
+                    <Grid item xs={6}>
                         <Typography variant="h6">Original Transcript</Typography>
                         <Paper
                             elevation={3}
@@ -183,10 +159,14 @@ const ResultsView = ({ jobId, setView, idToken }) => {
                             ref={originalPanelRef}
                             onScroll={(e) => handleScroll(e.target)}
                         >
-                            {renderTranscript(originalConversation.transcript.transcript_segments)}
+                            <List>
+                                {Array.from({ length: Math.max(originalConversation.transcript.transcript_segments.length, redactedConversation.transcript.transcript_segments.length) }).map((_, index) => (
+                                    renderMessage(originalConversation.transcript.transcript_segments[index], false)
+                                ))}
+                            </List>
                         </Paper>
-                    </Box>
-                    <Box sx={{ flex: 1 }}>
+                    </Grid>
+                    <Grid item xs={6}>
                         <Typography variant="h6">Redacted Transcript</Typography>
                         <Paper
                             elevation={3}
@@ -194,10 +174,14 @@ const ResultsView = ({ jobId, setView, idToken }) => {
                             ref={redactedPanelRef}
                             onScroll={(e) => handleScroll(e.target)}
                         >
-                            {renderTranscript(redactedConversation.transcript.transcript_segments, true)}
+                            <List>
+                                {Array.from({ length: Math.max(originalConversation.transcript.transcript_segments.length, redactedConversation.transcript.transcript_segments.length) }).map((_, index) => (
+                                    renderMessage(redactedConversation.transcript.transcript_segments[index], true)
+                                ))}
+                            </List>
                         </Paper>
-                    </Box>
-                </Box>
+                    </Grid>
+                </Grid>
             )}
         </Box>
     );
