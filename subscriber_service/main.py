@@ -271,11 +271,11 @@ def process_transcript_event():
                 response_data = response.json()
                 logger.info(f"Customer utterance (entry {original_entry_index}) processed. Response data: {response_data}")
 
-                redacted_transcript = response_data.get('redacted_transcript')
+                redacted_transcript = response_data.get('redacted_transcript', transcript) # Fallback to original if not found
                 if redacted_transcript is not None:
                     if publisher and REDACTED_TOPIC_NAME:
                         full_redacted_topic_path = get_full_topic_path(REDACTED_TOPIC_NAME, SUBSCRIBER_GCP_PROJECT_ID)
-
+ 
                         publish_payload = {
                             "conversation_id": conversation_id,
                             "original_entry_index": original_entry_index,
