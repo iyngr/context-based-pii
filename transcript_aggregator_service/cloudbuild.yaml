@@ -33,16 +33,12 @@ steps:
       UTTERANCE_WINDOW_SIZE=5,
       POLLING_INTERVAL_SECONDS=5,
       MAIN_SERVICE_URL=${_MAIN_SERVICE_URL},
-      REDIS_HOST=${_REDIS_HOST},
-      REDIS_PORT=${_REDIS_PORT}
 substitutions:
   _GAR_LOCATION: 'us-central1'
   _GAR_REPOSITORY: 'ccai-services'
   _AGGREGATOR_SA: 'transcript-aggregator-sa@${PROJECT_ID}.iam.gserviceaccount.com'
   _AGGREGATED_BUCKET: 'pg-transcript'
   _MAIN_SERVICE_URL: 'https://context-manager-${PROJECT_NUMBER}.us-central1.run.app' # Placeholder, replace with actual URL
-  _REDIS_HOST: 'your-redis-host' # Placeholder, replace with actual Redis host
-  _REDIS_PORT: '6379' # Placeholder, replace with actual Redis port
 
 options:
   logging: CLOUD_LOGGING_ONLY
