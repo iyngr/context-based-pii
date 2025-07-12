@@ -14,7 +14,7 @@ import { getAuth } from "firebase/auth"; // Import Firebase auth
 import { v4 as uuidv4 } from 'uuid'; // Import uuid
 
 const ChatSimulator = ({ setView, setJobId }) => {
-    const [messages, setMessages] = useState([]);
+    const [messages, setMessages] = useState([]); // Each message will be { speaker, originalText, redactedText }
     const [customerInput, setCustomerInput] = useState('');
     const [agentInput, setAgentInput] = useState('');
     const conversationIdRef = useRef(null);
@@ -29,10 +29,10 @@ const ChatSimulator = ({ setView, setJobId }) => {
     const handleSendMessage = async (speaker, text) => {
         if (text.trim() === '') return;
         const role = speaker === 'Customer' ? 'END_USER' : 'AGENT';
-        const originalMessage = { speaker: role, text };
+        const newMessage = { speaker: role, originalText: text, redactedText: '' };
 
         // Add original message to the display immediately
-        setMessages(prevMessages => [...prevMessages, originalMessage]);
+        setMessages(prevMessages => [...prevMessages, newMessage]);
 
         if (speaker === 'Customer') {
             setCustomerInput('');
@@ -47,6 +47,7 @@ const ChatSimulator = ({ setView, setJobId }) => {
             }
             const idToken = await auth.currentUser.getIdToken(true);
 
+            let redactedContent = '';
             if (role === 'AGENT') {
                 // Agent utterance: call handle-agent-utterance and get redacted text
                 const response = await fetch(`/api/handle-agent-utterance`, {
@@ -66,14 +67,7 @@ const ChatSimulator = ({ setView, setJobId }) => {
                 }
 
                 const data = await response.json();
-                const redactedMessage = { speaker: role, text: data.redacted_transcript };
-
-                // Replace the last message (the original one) with the redacted version
-                setMessages(prevMessages => {
-                    const newMessages = [...prevMessages];
-                    newMessages[newMessages.length - 1] = redactedMessage;
-                    return newMessages;
-                });
+                redactedContent = data.redacted_transcript;
             } else {
                 // Customer utterance: call real-time redaction
                 const response = await fetch(`/api/redact-utterance-realtime`, {
@@ -93,15 +87,18 @@ const ChatSimulator = ({ setView, setJobId }) => {
                 }
 
                 const data = await response.json();
-                const redactedMessage = { speaker: role, text: data.redacted_utterance };
-
-                // Replace the last message (the original one) with the redacted version
-                setMessages(prevMessages => {
-                    const newMessages = [...prevMessages];
-                    newMessages[newMessages.length - 1] = redactedMessage;
-                    return newMessages;
-                });
+                redactedContent = data.redacted_utterance;
             }
+
+            // Update the last message with the redacted version
+            setMessages(prevMessages => {
+                const newMessages = [...prevMessages];
+                newMessages[newMessages.length - 1] = {
+                    ...newMessages[newMessages.length - 1],
+                    redactedText: redactedContent,
+                };
+                return newMessages;
+            });
         } catch (error) {
             console.error('Error processing utterance:', error);
             // Optionally, show an error to the user or handle it gracefully
@@ -123,7 +120,12 @@ const ChatSimulator = ({ setView, setJobId }) => {
                     'Authorization': `Bearer ${idToken}`,
                 },
                 body: JSON.stringify({
-                    transcript: { transcript_segments: messages },
+                    transcript: {
+                        transcript_segments: messages.map(msg => ({
+                            speaker: msg.speaker,
+                            text: msg.originalText, // Send original text for analysis
+                        })),
+                    },
                 }),
             });
 
@@ -171,7 +173,7 @@ const ChatSimulator = ({ setView, setJobId }) => {
                                     maxWidth: '70%',
                                 }}
                             >
-                                <ListItemText primary={msg.text} secondary={msg.speaker} />
+                                <ListItemText primary={msg.originalText} secondary={msg.speaker} />
                             </Box>
                         </ListItem>
                     ))}
