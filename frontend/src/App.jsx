@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Container, Typography, Button, Box, CircularProgress } from '@mui/material';
 import ChatIcon from '@mui/icons-material/Chat';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
-import ChatSimulator from './components/ChatSimulator';
-import UploadConversation from './components/UploadConversation';
+import ChatSimulator from './components/ChatSimulator.jsx';
+import UploadConversation from './components/UploadConversation.jsx';
 import ResultsView from './components/ResultsView';
 import LoginScreen from './components/LoginScreen'; // Import the new LoginScreen
 import './App.css';
@@ -103,5 +103,9 @@ function App() {
     // If user is logged in, show the main app
     return <div className="App">{renderView()}</div>;
 }
+
+export const unusedFunction = () => {
+    console.log('This function should be removed by tree shaking');
+};
 
 export default App;

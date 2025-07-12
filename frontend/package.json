@@ -14,15 +14,12 @@
         "http-proxy-middleware": "latest",
         "react": "latest",
         "react-dom": "latest",
-        "react-scripts": "latest",
         "uuid": "^11.1.0"
     },
     "scripts": {
-        "start": "node server.js",
-        "build": "react-scripts build",
-        "test": "react-scripts test",
-        "eject": "react-scripts eject",
-        "dev": "react-scripts start"
+        "start": "vite",
+        "build": "vite build",
+        "serve": "vite preview"
     },
     "eslintConfig": {
         "extends": [
@@ -41,5 +38,9 @@
             "last 1 firefox version",
             "last 1 safari version"
         ]
+    },
+    "devDependencies": {
+        "@vitejs/plugin-react": "^4.6.0",
+        "vite": "^7.0.4"
     }
 }
