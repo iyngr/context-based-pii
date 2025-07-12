@@ -10,8 +10,8 @@ from google.protobuf.timestamp_pb2 import Timestamp as ProtoTimestamp # Alias th
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from google.api_core.exceptions import InternalServerError, ServiceUnavailable, DeadlineExceeded, AlreadyExists, GoogleAPICallError
 import requests # New import for making HTTP requests
+import redis  # Added import for redis
 # Removed redis and secretmanager imports as per user's request to revert to environment variables
-# import redis
 # from google.cloud.secretmanager import SecretManagerServiceClient
 # from google.api_core.exceptions import NotFound, PermissionDenied
 
