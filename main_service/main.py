@@ -101,7 +101,7 @@ def firebase_auth_required(f):
 
         try:
             id_token = auth_header.split('Bearer ')[1]
-            decoded_token = auth.verify_id_token(id_token)
+            decoded_token = auth.verify_id_token(id_token, clock_skew_seconds=10, audience=os.environ.get('CONTEXT_MANAGER_URL'))
             request.firebase_user = decoded_token # Attach decoded token to request object
             logger.info(f"Authentication: Token verified for user UID: {decoded_token['uid']}")
         except IndexError:
