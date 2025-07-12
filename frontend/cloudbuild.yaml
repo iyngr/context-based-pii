@@ -84,8 +84,9 @@ options:
   logging: CLOUD_LOGGING_ONLY
   defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET
   machineType: 'E2_MEDIUM'
-  pool:
-    name: 'projects/${PROJECT_ID}/locations/${_REGION}/workerPools/default'
+  # Remove or comment out the pool section below
+  # pool:
+  #   name: 'projects/${PROJECT_ID}/locations/${_REGION}/workerPools/default'
 
 availableSecrets:
   secretManager:
