@@ -9,6 +9,7 @@ import {
     List,
     ListItem,
     ListItemText,
+    Grid, // Added Grid import
 } from '@mui/material';
 
 const ResultsView = ({ jobId, setView, idToken }) => {
@@ -20,6 +21,8 @@ const ResultsView = ({ jobId, setView, idToken }) => {
     const originalPanelRef = useRef(null);
     const redactedPanelRef = useRef(null);
     const isScrolling = useRef(false);
+    const originalItemRefs = useRef([]); // Added useRef for original items
+    const redactedItemRefs = useRef([]); // Added useRef for redacted items
 
     useEffect(() => {
         if (!jobId) return;
@@ -81,19 +84,23 @@ const ResultsView = ({ jobId, setView, idToken }) => {
         <List>
             {segments && segments.map((msg, index) => (
                 <ListItem
+                    ref={el => {
+                        if (redacted) redactedItemRefs.current[index] = el;
+                        else originalItemRefs.current[index] = el;
+                    }}
                     key={index}
                     sx={{
                         justifyContent:
-                            msg.speaker === 'END_USER' ? 'flex-start' : 'flex-end', // Changed 'CUSTOMER' to 'END_USER'
+                            msg.speaker === 'END_USER' ? 'flex-start' : 'flex-end',
                     }}
                 >
                     <Box
                         sx={{
                             bgcolor: redacted
-                                ? msg.speaker === 'END_USER' // Changed 'CUSTOMER' to 'END_USER'
+                                ? msg.speaker === 'END_USER'
                                     ? '#fff0f0'
                                     : '#e0f7fa'
-                                : msg.speaker === 'END_USER' // Changed 'CUSTOMER' to 'END_USER'
+                                : msg.speaker === 'END_USER'
                                     ? '#f0f0f0'
                                     : 'primary.main',
                             color:
@@ -107,10 +114,12 @@ const ResultsView = ({ jobId, setView, idToken }) => {
                             primary={
                                 <Typography
                                     dangerouslySetInnerHTML={{
-                                        __html: msg.text.replace(
-                                            /\[(.*?)\]/g,
-                                            '<span style="background-color: #ffeb3b; padding: 2px; border-radius: 3px;">[$1]</span>'
-                                        ),
+                                        __html: redacted
+                                            ? msg.text.replace(
+                                                /\[(.*?)\]/g,
+                                                '<span style="background-color: #ffeb3b; padding: 2px; border-radius: 3px;">[$1]</span>'
+                                            )
+                                            : msg.text,
                                     }}
                                 />
                             }
@@ -122,8 +131,29 @@ const ResultsView = ({ jobId, setView, idToken }) => {
         </List>
     );
 
+    useEffect(() => {
+        if (status === 'DONE' && originalConversation && redactedConversation) {
+            originalItemRefs.current = originalItemRefs.current.slice(0, originalConversation.transcript.transcript_segments.length);
+            redactedItemRefs.current = redactedItemRefs.current.slice(0, redactedConversation.transcript.transcript_segments.length);
+
+            originalConversation.transcript.transcript_segments.forEach((_, index) => {
+                const originalEl = originalItemRefs.current[index];
+                const redactedEl = redactedItemRefs.current[index];
+
+                if (originalEl && redactedEl) {
+                    const originalHeight = originalEl.offsetHeight;
+                    const redactedHeight = redactedEl.offsetHeight;
+                    const maxHeight = Math.max(originalHeight, redactedHeight);
+
+                    originalEl.style.minHeight = `${maxHeight}px`;
+                    redactedEl.style.minHeight = `${maxHeight}px`;
+                }
+            });
+        }
+    }, [status, originalConversation, redactedConversation]);
+
     return (
-        <Box sx={{ margin: 'auto', mt: 4 }}> {/* Removed maxWidth */}
+        <Box sx={{ margin: 'auto', mt: 4 }}>
             <Button onClick={() => setView('welcome')} sx={{ mb: 2 }}>
                 Start Over
             </Button>
@@ -153,10 +183,7 @@ const ResultsView = ({ jobId, setView, idToken }) => {
                             ref={originalPanelRef}
                             onScroll={(e) => handleScroll(e.target)}
                         >
-                            {renderTranscript(
-                                originalConversation.transcript.transcript_segments,
-                                false
-                            )}
+                            {renderTranscript(originalConversation.transcript.transcript_segments)}
                         </Paper>
                     </Box>
                     <Box sx={{ flex: 1 }}>
@@ -167,10 +194,7 @@ const ResultsView = ({ jobId, setView, idToken }) => {
                             ref={redactedPanelRef}
                             onScroll={(e) => handleScroll(e.target)}
                         >
-                            {renderTranscript(
-                                redactedConversation.transcript.transcript_segments,
-                                true
-                            )}
+                            {renderTranscript(redactedConversation.transcript.transcript_segments, true)}
                         </Paper>
                     </Box>
                 </Box>
