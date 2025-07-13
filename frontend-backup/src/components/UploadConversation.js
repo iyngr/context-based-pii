@@ -59,7 +59,6 @@ const UploadConversation = ({ setView, setJobId }) => {
                     setError('Failed to upload conversation. Please try again.');
                 }
             } catch (err) {
-                console.error('Error parsing JSON:', err);
                 setError('Invalid JSON format in the uploaded file.');
             }
         };
