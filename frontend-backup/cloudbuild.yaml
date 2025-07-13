@@ -10,13 +10,14 @@ steps:
       - '-c'
       - |
         docker build -t '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/${_SERVICE_NAME}:${SHORT_SHA}' \
-        --build-arg "NEXT_PUBLIC_FIREBASE_API_KEY=$$FIREBASE_API_KEY" \
-        --build-arg "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=$$FIREBASE_AUTH_DOMAIN" \
-        --build-arg "NEXT_PUBLIC_FIREBASE_PROJECT_ID=$$FIREBASE_PROJECT_ID" \
-        --build-arg "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=$$FIREBASE_STORAGE_BUCKET" \
-        --build-arg "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=$$FIREBASE_MESSAGING_SENDER_ID" \
-        --build-arg "NEXT_PUBLIC_FIREBASE_APP_ID=$$FIREBASE_APP_ID" \
-        --build-arg "BACKEND_SERVICE_URL=$$CONTEXT_MANAGER_URL" \
+        --build-arg "REACT_APP_FIREBASE_API_KEY=$$FIREBASE_API_KEY" \
+        --build-arg "REACT_APP_FIREBASE_AUTH_DOMAIN=$$FIREBASE_AUTH_DOMAIN" \
+        --build-arg "REACT_APP_FIREBASE_PROJECT_ID=$$FIREBASE_PROJECT_ID" \
+        --build-arg "REACT_APP_FIREBASE_STORAGE_BUCKET=$$FIREBASE_STORAGE_BUCKET" \
+        --build-arg "REACT_APP_FIREBASE_MESSAGING_SENDER_ID=$$FIREBASE_MESSAGING_SENDER_ID" \
+        --build-arg "REACT_APP_FIREBASE_APP_ID=$$FIREBASE_APP_ID" \
+        --build-arg "REACT_APP_BACKEND_URL=$$CONTEXT_MANAGER_URL" \
+        --build-arg "REACT_APP_TRANSCRIPT_AGGREGATOR_URL=$$TRANSCRIPT_AGGREGATOR_URL" \
         --cache-from '${_GAR_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_GAR_REPOSITORY}/${_SERVICE_NAME}:latest' \
         .
     dir: 'frontend'
@@ -29,6 +30,7 @@ steps:
       - 'FIREBASE_MESSAGING_SENDER_ID'
       - 'FIREBASE_APP_ID'
       - 'CONTEXT_MANAGER_URL'
+      - 'TRANSCRIPT_AGGREGATOR_URL'
 
   # Push the Docker image to the container registry
   - id: 'Push frontend image'
@@ -64,23 +66,27 @@ steps:
       - '--allow-unauthenticated' # Allow public access for the frontend application
       - '--min-instances=0'
       - '--max-instances=1'
-      - '--port=3000' # Next.js default port
       - '--service-account'
       - 'context-manager-sa@${PROJECT_ID}.iam.gserviceaccount.com'
-      # Set runtime environment variables for Next.js
-      - '--set-secrets=BACKEND_SERVICE_URL=CONTEXT_MANAGER_URL:latest'
+      # Correctly set secrets as runtime environment variables in the container
+      - '--set-secrets=BACKEND_SERVICE_URL=CONTEXT_MANAGER_URL:latest,CONTEXT_MANAGER_URL=CONTEXT_MANAGER_URL:latest,TRANSCRIPT_AGGREGATOR_URL=TRANSCRIPT_AGGREGATOR_URL:latest,FIREBASE_API_KEY=FIREBASE_API_KEY:latest,FIREBASE_AUTH_DOMAIN=FIREBASE_AUTH_DOMAIN:latest,FIREBASE_PROJECT_ID=FIREBASE_PROJECT_ID:latest,FIREBASE_STORAGE_BUCKET=FIREBASE_STORAGE_BUCKET:latest,FIREBASE_MESSAGING_SENDER_ID=FIREBASE_MESSAGING_SENDER_ID:latest,FIREBASE_APP_ID=FIREBASE_APP_ID:latest'
     dir: 'frontend'
+    # The 'secretEnv' block is removed from this deployment step as it's not needed here.
 
 substitutions:
   _GAR_LOCATION: 'us-central1'
   _GAR_REPOSITORY: 'ccai-services'
   _SERVICE_NAME: frontend-app # Name of the Cloud Run service
   _REGION: us-central1 # GCP region for deployment
+  _FRONTEND_CACHE_BUCKET: '${PROJECT_ID}-frontend-build-cache' # This substitution is no longer strictly needed if cache steps are removed
 
 options:
   logging: CLOUD_LOGGING_ONLY
   defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET
   machineType: 'E2_MEDIUM'
+  # Remove or comment out the pool section below
+  # pool:
+  #   name: 'projects/${PROJECT_ID}/locations/${_REGION}/workerPools/default'
 
 availableSecrets:
   secretManager:
@@ -100,3 +106,6 @@ availableSecrets:
     env: 'FIREBASE_MESSAGING_SENDER_ID'
   - versionName: projects/${PROJECT_ID}/secrets/FIREBASE_APP_ID/versions/latest
     env: 'FIREBASE_APP_ID'
+  - versionName: projects/${PROJECT_ID}/secrets/TRANSCRIPT_AGGREGATOR_URL/versions/latest
+    env: 'TRANSCRIPT_AGGREGATOR_URL'
+

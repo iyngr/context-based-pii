@@ -9,6 +9,7 @@ import {
     List,
     ListItem,
     ListItemText,
+    Grid, // Added Grid import
 } from '@mui/material';
 
 const ResultsView = ({ jobId, setView, idToken }) => {
@@ -91,7 +92,6 @@ const ResultsView = ({ jobId, setView, idToken }) => {
                     clearInterval(fastPoll); // Stop fast polling on failure
                 }
             } catch (err) {
-                console.error('Polling error:', err);
                 setStatus('FAILED');
                 setError('An error occurred while fetching the results.');
                 clearInterval(poll);
