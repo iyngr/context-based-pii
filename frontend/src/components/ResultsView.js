@@ -10,12 +10,14 @@ import {
     ListItem,
     ListItemText,
 } from '@mui/material';
+import { useRouter } from 'next/navigation'; // Import Next.js router
 
 const ResultsView = ({ jobId, setView, idToken }) => {
     const [status, setStatus] = useState('PROCESSING');
     const [originalConversation, setOriginalConversation] = useState(null);
     const [redactedConversation, setRedactedConversation] = useState(null);
     const [error, setError] = useState(null);
+    const router = useRouter();
 
     const originalPanelRef = useRef(null);
     const redactedPanelRef = useRef(null);
@@ -29,10 +31,8 @@ const ResultsView = ({ jobId, setView, idToken }) => {
         // Fast polling for real-time results from transcript aggregator
         const fastPoll = setInterval(async () => {
             try {
-                const aggregatorUrl = process.env.REACT_APP_TRANSCRIPT_AGGREGATOR_URL ||
-                    process.env.REACT_APP_BACKEND_URL.replace('/main-service', '/transcript-aggregator');
-
-                const response = await fetch(`${aggregatorUrl}/conversation/${jobId}`, {
+                // Use API route proxy instead of direct call to avoid CORS
+                const response = await fetch(`/api/conversation/${jobId}`, {
                     headers: {
                         'Authorization': `Bearer ${idToken}`,
                     },
@@ -63,7 +63,8 @@ const ResultsView = ({ jobId, setView, idToken }) => {
         // Standard polling for final status from main service
         const poll = setInterval(async () => {
             try {
-                const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/redaction-status/${jobId}`, {
+                // Use API route proxy instead of direct call to avoid CORS
+                const response = await fetch(`/api/redaction-status/${jobId}`, {
                     headers: {
                         'Authorization': `Bearer ${idToken}`,
                     },
@@ -231,7 +232,7 @@ const ResultsView = ({ jobId, setView, idToken }) => {
 
     return (
         <Box sx={{ margin: 'auto', mt: 4 }}>
-            <Button onClick={() => setView('welcome')} sx={{ mb: 2 }}>
+            <Button onClick={() => router.push('/')} sx={{ mb: 2 }}>
                 Start Over
             </Button>
             <Typography variant="h5" gutterBottom>

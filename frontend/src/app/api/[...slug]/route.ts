@@ -18,22 +18,36 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
 async function handleRequest(request: NextRequest, params: Promise<{ slug: string[] }>, method: string) {
     const resolvedParams = await params;
-    const BACKEND_SERVICE_URL = process.env.BACKEND_SERVICE_URL || 'http://localhost:8081';
-    
-    // Build the target URL by joining the slug array
+
+    // Build the path from slug array
     const path = resolvedParams.slug ? resolvedParams.slug.join('/') : '';
-    const targetUrl = `${BACKEND_SERVICE_URL}/${path}`;
-    
-    // Get search params from the original request
+
+    // Determine which backend service to use based on the path
+    let targetServiceUrl: string;
+
+    if (path.startsWith('conversation/')) {
+        // Route conversation requests to transcript aggregator service
+        targetServiceUrl = process.env.TRANSCRIPT_AGGREGATOR_URL ||
+            process.env.NEXT_PUBLIC_TRANSCRIPT_AGGREGATOR_URL ||
+            'http://localhost:8082';
+    } else {
+        // Route all other requests to main service
+        targetServiceUrl = process.env.BACKEND_SERVICE_URL ||
+            process.env.NEXT_PUBLIC_BACKEND_URL ||
+            'http://localhost:8081';
+    }
+
+    // Build the target URL
+    const targetUrl = `${targetServiceUrl}/${path}`;    // Get search params from the original request
     const searchParams = request.nextUrl.searchParams.toString();
     const finalUrl = searchParams ? `${targetUrl}?${searchParams}` : targetUrl;
-    
+
     console.log(`Proxying request: ${method} ${request.url} -> ${finalUrl}`);
-    
+
     try {
         // Prepare headers
         const headers = new Headers();
-        
+
         // Copy relevant headers from the original request
         const headersToProxy = ['authorization', 'content-type', 'user-agent'];
         headersToProxy.forEach(headerName => {
@@ -42,13 +56,13 @@ async function handleRequest(request: NextRequest, params: Promise<{ slug: strin
                 headers.set(headerName, headerValue);
             }
         });
-        
+
         // Prepare the fetch options
         const fetchOptions: RequestInit = {
             method,
             headers,
         };
-        
+
         // Add body for POST/PUT requests
         if (method === 'POST' || method === 'PUT') {
             const body = await request.text();
@@ -56,19 +70,19 @@ async function handleRequest(request: NextRequest, params: Promise<{ slug: strin
                 fetchOptions.body = body;
             }
         }
-        
+
         // Make the request to the backend
         const response = await fetch(finalUrl, fetchOptions);
-        
+
         // Get the response body
         const responseBody = await response.text();
-        
+
         // Create the response with the same status and headers
         const nextResponse = new NextResponse(responseBody, {
             status: response.status,
             statusText: response.statusText,
         });
-        
+
         // Copy response headers
         response.headers.forEach((value, name) => {
             // Skip certain headers that should not be proxied
@@ -76,9 +90,9 @@ async function handleRequest(request: NextRequest, params: Promise<{ slug: strin
                 nextResponse.headers.set(name, value);
             }
         });
-        
+
         return nextResponse;
-        
+
     } catch (error) {
         console.error('Proxy error:', error);
         return new NextResponse('Proxy error', { status: 500 });
