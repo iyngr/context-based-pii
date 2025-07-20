@@ -12,14 +12,12 @@ import {
 } from '@mui/material';
 import { getAuth } from "firebase/auth"; // Import Firebase auth
 import { v4 as uuidv4 } from 'uuid'; // Import uuid
-import { useRouter } from 'next/navigation'; // Import Next.js router
 
 const ChatSimulator = ({ setView, setJobId }) => {
     const [messages, setMessages] = useState([]); // Each message will be { speaker, originalText, redactedText }
     const [customerInput, setCustomerInput] = useState('');
     const [agentInput, setAgentInput] = useState('');
     const conversationIdRef = useRef(null);
-    const router = useRouter();
 
     useEffect(() => {
         // Generate a unique conversation ID when the component mounts
@@ -136,8 +134,8 @@ const ChatSimulator = ({ setView, setJobId }) => {
             }
 
             const data = await response.json();
-            // Navigate to results page with jobId in URL instead of using setView
-            router.push(`/results/${data.jobId}`);
+            setJobId(data.jobId); // Assuming the backend returns { jobId: '...' }
+            setView('results');
         } catch (error) {
             console.error('Error analyzing conversation:', error);
             alert('Failed to analyze conversation. Please try again.');
@@ -146,7 +144,7 @@ const ChatSimulator = ({ setView, setJobId }) => {
 
     return (
         <Box sx={{ maxWidth: 800, margin: 'auto', mt: 4 }}>
-            <Button onClick={() => router.push('/')} sx={{ mb: 2 }}>
+            <Button onClick={() => setView('welcome')} sx={{ mb: 2 }}>
                 Back
             </Button>
             <Typography variant="h5" gutterBottom>

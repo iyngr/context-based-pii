@@ -2,11 +2,9 @@ import React, { useState } from 'react';
 import { Button, Box, Typography, Alert } from '@mui/material';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import { getAuth } from "firebase/auth"; // Import Firebase auth
-import { useRouter } from 'next/navigation'; // Import Next.js router
 
 const UploadConversation = ({ setView, setJobId }) => {
     const [error, setError] = useState(null);
-    const router = useRouter();
 
     const handleFileChange = (event) => {
         const file = event.target.files[0];
@@ -54,14 +52,13 @@ const UploadConversation = ({ setView, setJobId }) => {
                     }
 
                     const data = await response.json();
-                    // Navigate to results page with jobId in URL instead of using setView
-                    router.push(`/results/${data.jobId}`);
+                    setJobId(data.jobId); // Assuming the backend returns { jobId: '...' }
+                    setView('results');
                 } catch (err) {
                     console.error('Error uploading conversation:', err);
                     setError('Failed to upload conversation. Please try again.');
                 }
             } catch (err) {
-                console.error('Error parsing JSON:', err);
                 setError('Invalid JSON format in the uploaded file.');
             }
         };
@@ -70,7 +67,7 @@ const UploadConversation = ({ setView, setJobId }) => {
 
     return (
         <Box sx={{ maxWidth: 800, margin: 'auto', mt: 4, textAlign: 'center' }}>
-            <Button onClick={() => router.push('/')} sx={{ mb: 2 }}>
+            <Button onClick={() => setView('welcome')} sx={{ mb: 2 }}>
                 Back
             </Button>
             <Typography variant="h5" gutterBottom>

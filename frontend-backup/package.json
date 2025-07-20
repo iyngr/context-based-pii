@@ -1,0 +1,45 @@
+{
+    "name": "frontend",
+    "version": "0.1.0",
+    "private": true,
+    "dependencies": {
+        "@emotion/react": "latest",
+        "@emotion/styled": "latest",
+        "@mui/icons-material": "latest",
+        "@mui/material": "latest",
+        "dotenv": "^17.0.1",
+        "eslint-config-react-app": "^7.0.1",
+        "express": "latest",
+        "firebase": "latest",
+        "http-proxy-middleware": "latest",
+        "react": "latest",
+        "react-dom": "latest",
+        "uuid": "^11.1.0",
+        "react-scripts": "latest"
+    },
+    "scripts": {
+        "start": "node server.js",
+        "build": "react-scripts build",
+        "test": "react-scripts test",
+        "eject": "react-scripts eject",
+        "dev": "react-scripts start"
+    },
+    "eslintConfig": {
+        "extends": [
+            "react-app",
+            "react-app/jest"
+        ]
+    },
+    "browserslist": {
+        "production": [
+            ">0.2%",
+            "not dead",
+            "not op_mini all"
+        ],
+        "development": [
+            "last 1 chrome version",
+            "last 1 firefox version",
+            "last 1 safari version"
+        ]
+    }
+}

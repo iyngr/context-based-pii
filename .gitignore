@@ -25,3 +25,8 @@ node_modules/
 frontend/.env
 # Local environment variables
 frontend/.env
+# React build directory
+frontend/build/
+# Next.js build directories
+frontend/.next/
+frontend/out/
