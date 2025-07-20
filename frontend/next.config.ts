@@ -18,7 +18,9 @@ const nextConfig: NextConfig = {
     ];
   },
   env: {
-    BACKEND_SERVICE_URL: process.env.BACKEND_SERVICE_URL,
+    // Make backend URLs available to API routes (server-side)
+    BACKEND_SERVICE_URL: process.env.NEXT_PUBLIC_BACKEND_URL,
+    TRANSCRIPT_AGGREGATOR_URL: process.env.NEXT_PUBLIC_TRANSCRIPT_AGGREGATOR_URL,
   },
 };
 
