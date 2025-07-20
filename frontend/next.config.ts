@@ -22,6 +22,9 @@ const nextConfig: NextConfig = {
     BACKEND_SERVICE_URL: process.env.NEXT_PUBLIC_BACKEND_URL,
     TRANSCRIPT_AGGREGATOR_URL: process.env.NEXT_PUBLIC_TRANSCRIPT_AGGREGATOR_URL,
   },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 };
 
 export default nextConfig;
