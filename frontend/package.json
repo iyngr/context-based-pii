@@ -14,7 +14,7 @@
     "@mui/icons-material": "latest",
     "@mui/material": "latest",
     "firebase": "latest",
-    "next": "15.3.5",
+    "next": "15.4.8",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "uuid": "^11.1.0"
